@@ -4,6 +4,7 @@
 
 #include "mem.h"
 #include "main.h"
+#include "ansi_color.h"
 
 #define MEM_WRITE_NEXT_LEN 4
 
@@ -27,6 +28,7 @@ uint8_t mem_read(uint16_t addr) {
     } else if (addr <= 0xFEFF) {
         return 0;
     } else if (addr <= 0xFF7F) {
+        printf("%sIO READ:0x%X%s ", ANSI_YELLOW, addr, ANSI_CLEAR);
         return mem.io_reg[addr-0xFF00];
     } else if (addr <= 0xFFFE) {
         return mem.wram[addr-0xFF80];
@@ -102,6 +104,11 @@ void mem_write_next(uint16_t addr, uint8_t data) {
     };
     mem_writes[mem_writes_i] = write;
     mem_writes_i++;
+}
+
+void mem_write_next16(uint16_t addr, uint16_t data) {
+    mem_write_next(addr, data & 0x00FF);
+    mem_write_next(addr + 1, (data & 0xFF00) >> 8);
 }
 
 void mem_writeback() {

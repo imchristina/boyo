@@ -5,6 +5,7 @@
 #include "main.h"
 #include "mem.h"
 #include "cpu.h"
+#include "ppu.h"
 
 bool emu_running = 1;
 
@@ -41,8 +42,9 @@ int main() {
         // Execute instruction/fetch next
         if (t == 0) {
             cpu_writeback();
-            cpu_execute();
+            t = cpu_execute();
         } else { // Do IO mapped stuff here
+            ppu_execute(t);
             t = 0;
         }
     }
