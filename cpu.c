@@ -507,7 +507,7 @@ uint8_t cpu_execute() {
             case 0xC9: // RET
                 t = 16;
                 cpu_next.pc = mem_read16(cpu.sp);
-                cpu.sp += 2;
+                cpu_next.sp += 2;
                 break;
             case 0xCB: // PREFIX
                 t = 4;
@@ -589,8 +589,8 @@ uint8_t cpu_execute() {
 
     //if (cpu.pc > 0x216) { exit(1); }
 
-    printf("%sAF:0x%#02x%02x BC:0x%#02x%02x ", ANSI_GREEN, cpu_next.a,cpu_next.f,cpu_next.b,cpu_next.c);
-    printf("DE:0x%#02x%02x HL:0x%#02x%02x SP:%#X%s\n",cpu_next.d,cpu_next.e,cpu_next.h,cpu_next.l,cpu_next.sp, ANSI_CLEAR);
+    printf("%sAF:0x%02X%02X BC:0x%02X%02X ", ANSI_GREEN, cpu_next.a,cpu_next.f,cpu_next.b,cpu_next.c);
+    printf("DE:0x%02X%02X HL:0x%02X%02X SP:0x%04X%s\n",cpu_next.d,cpu_next.e,cpu_next.h,cpu_next.l,cpu_next.sp, ANSI_CLEAR);
 
     return t;
 }

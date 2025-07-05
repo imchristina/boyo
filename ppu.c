@@ -101,9 +101,9 @@ bool ppu_execute(uint8_t t) {
         // PPU mode/timing
         switch (ppu.mode) {
             case PPU_MODE_HBLANK:
-                if ((dot_x = 0) && (dot_y < 144)) {
+                if ((dot_x == 0) && (dot_y < 144)) {
                     ppu.mode = PPU_MODE_OAM;
-                } else {
+                } else if (dot_y >= 144) {
                     ppu.mode = PPU_MODE_VBLANK;
                 }
                 break;
@@ -114,14 +114,14 @@ bool ppu_execute(uint8_t t) {
                 break;
             case PPU_MODE_OAM:
                 if (dot_x >= 80) {
-                    ppu.lx = 0;
                     ppu.mode = PPU_MODE_DRAWING;
                 }
                 break;
             case PPU_MODE_DRAWING:
-                if (dot_x >= 289) { // TODO variable timing
+                if (dot_x >= 80+172) { // TODO variable timing
+                    ppu.lx = 0;
                     ppu.mode = PPU_MODE_HBLANK;
-                } else {
+                } else if (ppu.lx < 160) {
                     draw();
                     ppu.lx++;
                 }
