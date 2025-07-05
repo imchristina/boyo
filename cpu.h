@@ -15,9 +15,9 @@ typedef struct {
     uint8_t l;
     uint16_t sp;
     uint16_t pc;
+    bool ime; // Interrupt handling enable
 
     // Internal State
-    bool ime;
     uint8_t op;
 } cpu_t;
 

@@ -18,9 +18,14 @@ typedef struct {
     uint8_t *wy; // Window Y position
     uint8_t *wx; // Window X position plus 7
 
-    uint8_t out[160*144];
+    int dot; // Current dot in frame
+    uint8_t mode;
+    uint8_t lx; // Virtual lx for decoupling with dot while rendering
+    uint8_t fb[160*144];
 } ppu_t;
 
-void ppu_execute(uint8_t t);
+extern ppu_t ppu;
+
+bool ppu_execute(uint8_t t);
 
 #endif

@@ -14,6 +14,8 @@ typedef struct {
     uint8_t io_reg[0x80];
     uint8_t hram[0x7F];
     uint8_t ie;
+
+    bool bootrom_disable;
 } mem_t;
 
 typedef struct {

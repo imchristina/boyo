@@ -3,7 +3,6 @@
 #include <stdlib.h>
 
 #include "mem.h"
-#include "main.h"
 #include "ansi_color.h"
 
 #define MEM_WRITE_NEXT_LEN 4
@@ -11,7 +10,7 @@
 mem_t mem = {};
 
 uint8_t mem_read(uint16_t addr) {
-    if ((addr < 255) & !mem.io_reg[0x50]) {
+    if ((addr < 255) && !mem.bootrom_disable) {
         return mem.bootrom[addr];
     } else if (addr <= 0x7FFF) {
         return mem.rom[addr];
@@ -31,12 +30,12 @@ uint8_t mem_read(uint16_t addr) {
         printf("%sIO READ:0x%X%s ", ANSI_YELLOW, addr, ANSI_CLEAR);
         return mem.io_reg[addr-0xFF00];
     } else if (addr <= 0xFFFE) {
-        return mem.wram[addr-0xFF80];
+        return mem.hram[addr-0xFF80];
     } else if (addr == 0xFFFF) {
         return mem.ie;
     } else {
         printf("Unknown read address 0x%X\n", addr);
-        emu_halt();
+        exit(1);
         return 0;
     }
 }
@@ -48,13 +47,29 @@ void mem_write(uint16_t addr, uint8_t data) {
         mem.vram[addr-0x8000] = data;
     } else if (addr <= 0xBFFF) {
         mem.eram[addr-0xA000] = data;
-    } else if ((addr >= 0xFF00) & (addr <= 0xFF7F)) {
-        mem.io_reg[addr-0xFF00] = data;
-    } else if ((addr >= 0xFF80) & (addr <= 0xFFFE)) {
+    } else if (addr <= 0xDFFF) {
+        mem.wram[addr-0xC000] = data;
+    } else if (addr <= 0xFDFF) {
+        mem.wram[addr-0xE000] = data;
+    } else if (addr <= 0xFE9F) {
+        mem.eram[addr-0xFE00] = data;
+    } else if (addr <= 0xFEFF) {
+        // Do nothing
+    } else if (addr <= 0xFF7F) {
+        if (addr == 0xFF50 && data) {
+            printf("%sBOOTROM DISABLED%s\n", ANSI_YELLOW, ANSI_CLEAR);
+            mem.bootrom_disable = 1;
+        } else {
+            printf("%sIO WRITE:0x%X 0x%X%s\n", ANSI_YELLOW, addr, data, ANSI_CLEAR);
+            mem.io_reg[addr-0xFF00] = data;
+        }
+    } else if (addr <= 0xFFFE) {
         mem.hram[addr-0xFF80] = data;
+    } else if (addr == 0xFFFF) {
+        mem.ie = data;
     } else {
         printf("Unknown write address 0x%X, data 0x%X\n", addr, data);
-        emu_halt();
+        exit(1);
     }
 }
 
