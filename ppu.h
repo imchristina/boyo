@@ -21,6 +21,7 @@ typedef struct {
     int dot; // Current dot in frame
     uint8_t mode;
     uint8_t lx; // Virtual lx for decoupling with dot while rendering
+    bool stat_int;
     uint8_t fb[160*144];
 } ppu_t;
 

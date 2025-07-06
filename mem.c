@@ -10,7 +10,7 @@
 mem_t mem = {};
 
 uint8_t mem_read(uint16_t addr) {
-    if ((addr < 255) && !mem.bootrom_disable) {
+    if ((addr < 256) && !mem.bootrom_disable) {
         return mem.bootrom[addr];
     } else if (addr <= 0x7FFF) {
         return mem.rom[addr];
@@ -52,11 +52,17 @@ void mem_write(uint16_t addr, uint8_t data) {
     } else if (addr <= 0xFDFF) {
         mem.wram[addr-0xE000] = data;
     } else if (addr <= 0xFE9F) {
-        mem.eram[addr-0xFE00] = data;
+        mem.oam[addr-0xFE00] = data;
     } else if (addr <= 0xFEFF) {
         // Do nothing
     } else if (addr <= 0xFF7F) {
-        if (addr == 0xFF50 && data) {
+        if (addr == 0xFF46) {
+            printf("%sOAM DMA:0x%X00%s\n", ANSI_YELLOW, data, ANSI_CLEAR);
+            for (uint16_t i = 0; i <= 0x9F; i++) {
+                uint16_t data_addr = ((uint16_t)data << 8) + i;
+                mem.oam[i] = mem_read(data_addr);
+            }
+        } else if (addr == 0xFF50 && data) {
             printf("%sBOOTROM DISABLED%s\n", ANSI_YELLOW, ANSI_CLEAR);
             mem.bootrom_disable = 1;
         } else {
