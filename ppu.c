@@ -142,7 +142,7 @@ bool ppu_execute(uint8_t t) {
                         ppu.mode = PPU_MODE_OAM;
                         stat_int_trans |= *ppu.stat & STAT_OAM_INT;
                     } else if (dot_y >= 144) {
-                        mem.io_reg[0x0F] &= INT_VBLANK; // VBLANK interrupt
+                        mem.io_reg[0x0F] |= INT_VBLANK; // VBLANK interrupt
                         ppu.mode = PPU_MODE_VBLANK;
                         stat_int_trans |= *ppu.stat & STAT_VBLANK_INT;
                     }
@@ -171,7 +171,7 @@ bool ppu_execute(uint8_t t) {
             }
 
             if (!ppu.stat_int && stat_int_trans) {
-                mem.io_reg[0x0F] &= INT_LCD;
+                mem.io_reg[0x0F] |= INT_STAT;
             }
             ppu.stat_int = stat_int_trans;
 

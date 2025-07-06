@@ -7,6 +7,7 @@
 #include "mem.h"
 #include "cpu.h"
 #include "ppu.h"
+#include "timer.h"
 
 bool emu_running = 1;
 
@@ -41,6 +42,8 @@ int main() {
             t = cpu_execute();
         } else { // Do IO mapped stuff here
             bool new_frame = ppu_execute(t);
+            timer_execute(t);
+
             if (new_frame) {
                 printf("NEW FRAME\n");
 

@@ -115,11 +115,20 @@ static inline void reg_hl_write(uint16_t value) {
 
 // Prefixed instruction helper functions
 static void prefix_rlc(uint8_t *reg) {
-    uint8_t result = (*reg << 1);
+    uint8_t result = (*reg << 1) | (*reg >> 7);
     flag_set_z(result);
     flag_set_n(0);
     flag_set_h(0);
     flag_set_c(*reg >> 7);
+    *reg = result;
+}
+
+static void prefix_rrc(uint8_t *reg) {
+    uint8_t result = (*reg >> 1) | (*reg << 7);
+    flag_set_z(result);
+    flag_set_n(0);
+    flag_set_h(0);
+    flag_set_c(*reg & 1);
     *reg = result;
 }
 
@@ -134,6 +143,24 @@ static void prefix_rl(uint8_t *reg) {
 
 static void prefix_rr(uint8_t *reg) {
     uint8_t result = (*reg >> 1) + ((uint8_t)flag_get_c() << 7);
+    flag_set_z(result);
+    flag_set_n(0);
+    flag_set_h(0);
+    flag_set_c(*reg & 1);
+    *reg = result;
+}
+
+static void prefix_sla(uint8_t *reg) {
+    uint8_t result = (*reg << 1);
+    flag_set_z(result);
+    flag_set_n(0);
+    flag_set_h(0);
+    flag_set_c(*reg >> 7);
+    *reg = result;
+}
+
+static void prefix_sra(uint8_t *reg) {
+    uint8_t result = (*reg >> 1) | (*reg & 0b10000000);
     flag_set_z(result);
     flag_set_n(0);
     flag_set_h(0);
@@ -196,11 +223,11 @@ bool execute_prefix(uint8_t op) {
     bool bank = op_low / 8;
     switch(((uint8_t)bank << 4) | op_high) {
         case 0x00: prefix_rlc(reg); break;
-        // case 0x10 prefix_rrc(reg); break;
+        case 0x10: prefix_rrc(reg); break;
         case 0x01: prefix_rl(reg); break;
         case 0x11: prefix_rr(reg); break;
-        // case 0x02: prefix_sla(reg); break;
-        // case 0x12: prefix_sra(reg); break;
+        case 0x02: prefix_sla(reg); break;
+        case 0x12: prefix_sra(reg); break;
         case 0x03: prefix_swap(reg); break;
         case 0x13: prefix_srl(reg); break;
         case 0x04: prefix_bit(0, reg); break;
@@ -415,6 +442,11 @@ uint8_t cpu_execute() {
                 flag_set_h(0);
                 flag_set_c(cpu.a & 1);
                 break;
+            case 0x10: // STOP
+                t = 4;
+                cpu_next.pc += 2;
+                cpu_next.stop = 1;
+                break;
             case 0x11: // LD DE,n16
                 t = 12;
                 cpu_next.pc += 3;
@@ -567,14 +599,11 @@ uint8_t cpu_execute() {
                     if (flag_get_h()) { adj += 0x6; }
                     if (flag_get_c()) { adj += 0x60; }
                     cpu_next.a -= adj;
-                    flag_set_c(0);
                 } else {
                     if (flag_get_h() || ((cpu.a & 0xF) > 0x9)) { adj += 0x6; }
                     if (flag_get_c() || (cpu.a > 0x99)) {
                         adj += 0x60;
                         flag_set_c(1);
-                    } else {
-                        flag_set_c(0);
                     }
                     cpu_next.a += adj;
                 }
@@ -1413,6 +1442,15 @@ uint8_t cpu_execute() {
                 reg_bc_write(mem_read16(cpu.sp));
                 cpu_next.sp += 2;
                 break;
+            case 0xC2: // JP NZ,a16
+                if (flag_get_z()) { // Not taken
+                    t = 12;
+                    cpu_next.pc += 3;
+                } else {
+                    t = 16;
+                    cpu_next.pc = mem_read16(cpu.pc+1);
+                }
+                break;
             case 0xC3: // JP a16
                 t = 16;
                 cpu_next.pc = mem_read16(cpu.pc+1);
@@ -1508,6 +1546,15 @@ uint8_t cpu_execute() {
                 reg_de_write(mem_read16(cpu.sp));
                 cpu_next.sp += 2;
                 break;
+            case 0xD2: // JP NC,a16
+                if (flag_get_c()) { // Not taken
+                    t = 12;
+                    cpu_next.pc += 3;
+                } else {
+                    t = 16;
+                    cpu_next.pc = mem_read16(cpu.pc+1);
+                }
+                break;
             case 0xD5: // PUSH DE
                 t = 16;
                 cpu_next.pc += 1;
@@ -1523,6 +1570,16 @@ uint8_t cpu_execute() {
                 flag_set_n(1);
                 flag_set_h((cpu.a & 0x0F) < (n8 & 0x0F));
                 flag_set_c(n8 > cpu.a);
+                break;
+            case 0xD8: // RET C
+                if (!flag_get_c()) { // Not taken
+                    t = 8;
+                    cpu_next.pc += 1;
+                } else { // Taken
+                    t = 20;
+                    cpu_next.pc = mem_read16(cpu.sp);
+                    cpu_next.sp += 2;
+                }
                 break;
             case 0xD9: // RETI
                 t = 16;
@@ -1555,11 +1612,8 @@ uint8_t cpu_execute() {
             case 0xE6: // AND A,n8
                 t = 8;
                 cpu_next.pc += 2;
-                cpu_next.a = cpu.a & mem_read(cpu.pc + 1);
-                flag_set_z(cpu_next.a);
-                flag_set_n(0);
-                flag_set_h(1);
-                flag_set_c(0);
+                n8 = mem_read(cpu.pc + 1);
+                and_a(&n8);
                 break;
             case 0xE9: // JP HL
                 t = 4;
@@ -1593,7 +1647,7 @@ uint8_t cpu_execute() {
             case 0xF1: // POP AF
                 t = 12;
                 cpu_next.pc += 1;
-                reg_af_write(mem_read16(cpu.sp));
+                reg_af_write(mem_read16(cpu.sp) & 0xFFF0);
                 cpu_next.sp += 2;
                 break;
             case 0xF3: // DI
@@ -1605,7 +1659,28 @@ uint8_t cpu_execute() {
                 t = 16;
                 cpu_next.pc += 1;
                 cpu_next.sp -= 2;
-                mem_write_next16(cpu_next.sp, reg_af_read());
+                mem_write_next16(cpu_next.sp, reg_af_read() & 0xFFF0);
+                break;
+            case 0xF6: // OR A,n8
+                t = 8;
+                cpu_next.pc += 2;
+                n8 = mem_read(cpu.pc + 1);
+                or_a(&n8);
+                break;
+            case 0xF8: // LD HL,SP+e8
+                t = 12;
+                cpu_next.pc += 2;
+                n8 = mem_read(cpu.pc+1);
+                reg_hl_write(cpu.sp + (int8_t)n8);
+                flag_set_z(0);
+                flag_set_n(0);
+                flag_set_h(((cpu.sp & 0x0F) + ((int8_t)n8 & 0x0F)) > 0x0F);
+                flag_set_c(((cpu.sp & 0xFF) + (int8_t)n8) > 0xFF);
+                break;
+            case 0xF9: // LD SP,HL
+                t = 8;
+                cpu_next.pc += 1;
+                cpu_next.sp = reg_hl_read();
                 break;
             case 0xFA: // LD A,[a16]
                 t = 16;
@@ -1641,6 +1716,7 @@ uint8_t cpu_execute() {
         printf("%sINT 0b%08b %s", ANSI_YELLOW, *iflag, ANSI_CLEAR);
 
         cpu_next.halt = 0;
+        cpu_next.stop = 0;
         cpu_next.ime = 0;
         t = 20;
 
@@ -1649,6 +1725,18 @@ uint8_t cpu_execute() {
         if (*iflag & mem.ie & INT_VBLANK) {
             iaddress = 0x0040;
             *iflag &= ~INT_VBLANK;
+        } else if (*iflag & mem.ie & INT_STAT) {
+            iaddress = 0x0048;
+            *iflag &= ~INT_STAT;
+        } else if (*iflag & mem.ie & INT_TIMER) {
+            iaddress = 0x0050;
+            *iflag &= ~INT_TIMER;
+        } else if (*iflag & mem.ie & INT_SERIAL) {
+            iaddress = 0x0058;
+            *iflag &= ~INT_SERIAL;
+        } else if (*iflag & mem.ie & INT_JOYPAD) {
+            iaddress = 0x0060;
+            *iflag &= ~INT_JOYPAD;
         } else {
             printf("%sUnknown INT 0x%X%s\n", ANSI_RED, *iflag, ANSI_CLEAR);
             exit(1);
@@ -1660,6 +1748,10 @@ uint8_t cpu_execute() {
     } else if (cpu.halt) {
         printf("%sHALTED %s", ANSI_YELLOW, ANSI_CLEAR);
         t = 4;
+        cpu_next.halt = !(bool)(*iflag & mem.ie); // TODO emulate HALT bug
+    } else if (cpu.stop) {
+        printf("%sSTOPPED %s", ANSI_YELLOW, ANSI_CLEAR);
+        t = 0;
     }
 
     printf("%sAF:0x%02X%02X BC:0x%02X%02X ", ANSI_GREEN, cpu_next.a,cpu_next.f,cpu_next.b,cpu_next.c);

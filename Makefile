@@ -4,7 +4,7 @@ CFLAGS = -Wall -Wextra -lSDL
 
 # Target executable and source files
 TARGET = gbemu
-SRCS = main.c mem.c cpu.c ppu.c
+SRCS = main.c mem.c cpu.c ppu.c timer.c
 
 # Default target
 all:

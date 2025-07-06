@@ -19,6 +19,7 @@ typedef struct {
 
     // Internal State
     bool halt;
+    bool stop;
     bool ime_pending; // EI state mutation delayed by one instruction
     uint8_t op;
 } cpu_t;

@@ -6,10 +6,10 @@
 
 // Interrupt masks
 #define INT_VBLANK  0b00000001
-#define INT_LCD     0b00000010
+#define INT_STAT    0b00000010
 #define INT_TIMER   0b00000100
 #define INT_SERIAL  0b00001000
-#define INT_JOYPAD  0b00010000;
+#define INT_JOYPAD  0b00010000
 
 typedef struct {
     uint8_t bootrom[256];
