@@ -15,12 +15,12 @@
 #define LCDC_WIN_TILEMAP        0b01000000
 #define LCDC_PPU_ENABLE         0b10000000
 
-#define STAT_PPU_MODE   0b00000011
-#define STAT_LYC_LY     0b00000100
-#define STAT_HBLANK_INT  0b00001000
-#define STAT_VBLANK_INT  0b00010000
-#define STAT_OAM_INT  0b00100000
-#define STAT_LYC_INT    0b01000000
+#define STAT_PPU_MODE       0b00000011
+#define STAT_LYC_LY         0b00000100
+#define STAT_HBLANK_INT     0b00001000
+#define STAT_VBLANK_INT     0b00010000
+#define STAT_OAM_INT        0b00100000
+#define STAT_LYC_INT        0b01000000
 
 ppu_t ppu = {
     .lcdc = &mem.io_reg[0x40],
@@ -90,7 +90,7 @@ static void draw() {
     }
 
     // Window
-    if (false) {//((*ppu.lcdc & LCDC_BG_WIN_ENABLE) && (*ppu.lcdc & LCDC_WIN_ENABLE)) {
+    if ((*ppu.lcdc & LCDC_BG_WIN_ENABLE) && (*ppu.lcdc & LCDC_WIN_ENABLE)) {
         if (ppu.lx >= *ppu.wx && *ppu.ly >= (*ppu.wy - 7)) {
             // Get window x/y values
             int x = ppu.lx - (*ppu.wx - 7);

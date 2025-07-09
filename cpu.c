@@ -3,7 +3,7 @@
 
 #include "cpu.h"
 #include "mem.h"
-#include "ansi_color.h"
+#include "log.h"
 
 cpu_t cpu = {};
 
@@ -247,7 +247,7 @@ bool execute_prefix(uint8_t op) {
         case 0x0B: prefix_res(6, reg); break;
         case 0x1B: prefix_res(7, reg); break;
         default:
-            printf("%sUnknown PREFIX OP:0x%X\n%s", ANSI_RED, op, ANSI_CLEAR);
+            printf("Unknown PREFIX OP:0x%X\n", op);
             exit(1);
     }
 
@@ -329,7 +329,7 @@ uint8_t cpu_execute() {
     // Fetch instruction
     cpu.op = mem_read(cpu.pc);
 
-    printf("%sPC:0x%X %sOP:0x%X%s ", ANSI_BLUE, cpu.pc, ANSI_BLUE_BOLD, cpu.op, ANSI_CLEAR);
+    DEBUG_PRINTF_CPU("PC:0x%X OP:0x%X ", cpu.pc, cpu.op);
 
     // Temporary variables
     uint8_t n8;
@@ -1717,11 +1717,11 @@ uint8_t cpu_execute() {
                 cpu_next.pc = 0x0038;
                 break;
             default:
-                printf("%sUnknown OP 0x%X%s\n", ANSI_RED, cpu.op, ANSI_CLEAR);
+                printf("Unknown OP 0x%X\n", cpu.op);
                 exit(1);
         }
     } else if (interrupt) { // Interrupt triggered
-        printf("%sINT 0b%08b %s", ANSI_YELLOW, *iflag, ANSI_CLEAR);
+        DEBUG_PRINTF_CPU("INT 0b%08b ", *iflag);
 
         cpu_next.halt = 0;
         cpu_next.stop = 0;
@@ -1746,7 +1746,7 @@ uint8_t cpu_execute() {
             iaddress = 0x0060;
             *iflag &= ~INT_JOYPAD;
         } else {
-            printf("%sUnknown INT 0x%X%s\n", ANSI_RED, *iflag, ANSI_CLEAR);
+            printf("Unknown INT 0x%X\n", *iflag);
             exit(1);
         }
 
@@ -1754,16 +1754,17 @@ uint8_t cpu_execute() {
         mem_write_next16(cpu_next.sp, cpu.pc);
         cpu_next.pc = iaddress;
     } else if (cpu.halt) {
-        printf("%sHALTED %s", ANSI_YELLOW, ANSI_CLEAR);
+        DEBUG_PRINTF_CPU("HALTED");
         t = 4;
         cpu_next.halt = !(bool)(*iflag & mem.ie); // TODO emulate HALT bug
     } else if (cpu.stop) {
-        printf("%sSTOPPED %s", ANSI_YELLOW, ANSI_CLEAR);
+        DEBUG_PRINTF_CPU("STOPPED");
         t = 0;
     }
 
-    printf("%sAF:0x%02X%02X BC:0x%02X%02X ", ANSI_GREEN, cpu_next.a,cpu_next.f,cpu_next.b,cpu_next.c);
-    printf("DE:0x%02X%02X HL:0x%02X%02X SP:0x%04X%s\n",cpu_next.d,cpu_next.e,cpu_next.h,cpu_next.l,cpu_next.sp, ANSI_CLEAR);
+    DEBUG_PRINTF_CPU("AF:0x%02X%02X BC:0x%02X%02X ", cpu_next.a,cpu_next.f,cpu_next.b,cpu_next.c);
+    DEBUG_PRINTF_CPU("DE:0x%02X%02X HL:0x%02X%02X ",cpu_next.d,cpu_next.e,cpu_next.h,cpu_next.l);
+    DEBUG_PRINTF_CPU("SP:0x%04X\n",cpu_next.sp);
 
     return t;
 }

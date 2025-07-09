@@ -8,6 +8,7 @@
 #include "cpu.h"
 #include "ppu.h"
 #include "timer.h"
+#include "log.h"
 
 bool emu_running = 1;
 
@@ -16,6 +17,13 @@ int main() {
     SDL_Init(SDL_INIT_VIDEO);
     signal(SIGINT, SIG_DFL); // Return ctrl-c to normal
     SDL_Surface *screen = SDL_SetVideoMode(160, 144, 8, 0);
+
+    // Get colors here because MapRGB is slow
+    uint8_t sdl_col[4];
+    sdl_col[0] = SDL_MapRGB(screen->format, 255, 255, 255);
+    sdl_col[1] = SDL_MapRGB(screen->format, 170, 170, 170);
+    sdl_col[2] = SDL_MapRGB(screen->format, 85, 85, 85);
+    sdl_col[3] = SDL_MapRGB(screen->format, 0, 0, 0);
 
     // Open boot/game roms
     mem_open_bootrom("dmg_boot.bin");
@@ -36,33 +44,21 @@ int main() {
     uint8_t t = 0; // Time to next instruction
     uint8_t sdl_fb[160*144];
     while (emu_running) {
+        bool new_frame;
         // Execute instruction/fetch next
         if (t == 0) {
             cpu_writeback();
             t = cpu_execute();
         } else { // Do IO mapped stuff here
-            bool new_frame = ppu_execute(t);
+            new_frame = ppu_execute(t);
             timer_execute(t);
 
             if (new_frame) {
-                printf("NEW FRAME\n");
+                DEBUG_PRINTF("NEW FRAME\n");
 
                 // Convert GB color to SDL 8-bit
                 for (int i = 0; i < 160*144; i++) {
-                    switch (ppu.fb[i]) {
-                        case 0: // White
-                            sdl_fb[i] = SDL_MapRGB(screen->format, 255, 255, 255);
-                            break;
-                        case 1: // Light grey
-                            sdl_fb[i] = SDL_MapRGB(screen->format, 170, 170, 170);
-                            break;
-                        case 2: // Dark grey
-                            sdl_fb[i] = SDL_MapRGB(screen->format, 85, 85, 85);
-                            break;
-                        case 3: // Black
-                            sdl_fb[i] = SDL_MapRGB(screen->format, 0, 0, 0);
-                            break;
-                    }
+                    sdl_fb[i] = sdl_col[ppu.fb[i]];
                 }
 
                 memcpy(screen->pixels, sdl_fb, 160*144);
@@ -71,7 +67,7 @@ int main() {
             t = 0;
         }
 
-        while (SDL_PollEvent(&e)) {
+        while (new_frame && SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
                 emu_running = 0;
             }

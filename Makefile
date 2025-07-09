@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -lSDL
+CFLAGS = -Wall -Wextra -lSDL -g
 
 # Target executable and source files
 TARGET = gbemu

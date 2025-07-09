@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #include "mem.h"
-#include "ansi_color.h"
+#include "log.h"
 
 #define MEM_WRITE_NEXT_LEN 4
 
@@ -27,7 +27,10 @@ uint8_t mem_read(uint16_t addr) {
     } else if (addr <= 0xFEFF) {
         return 0;
     } else if (addr <= 0xFF7F) {
-        printf("%sIO READ:0x%X%s ", ANSI_YELLOW, addr, ANSI_CLEAR);
+        DEBUG_PRINTF_MEM("IO READ:0x%X ", addr);
+        if (addr == 0xFF00) {
+            return 0x0F;
+        }
         return mem.io_reg[addr-0xFF00];
     } else if (addr <= 0xFFFE) {
         return mem.hram[addr-0xFF80];
@@ -57,16 +60,16 @@ void mem_write(uint16_t addr, uint8_t data) {
         // Do nothing
     } else if (addr <= 0xFF7F) {
         if (addr == 0xFF46) {
-            printf("%sOAM DMA:0x%X00%s\n", ANSI_YELLOW, data, ANSI_CLEAR);
+            DEBUG_PRINTF_MEM("OAM DMA:0x%X00\n", data);
             for (uint16_t i = 0; i <= 0x9F; i++) {
                 uint16_t data_addr = ((uint16_t)data << 8) + i;
                 mem.oam[i] = mem_read(data_addr);
             }
         } else if (addr == 0xFF50 && data) {
-            printf("%sBOOTROM DISABLED%s\n", ANSI_YELLOW, ANSI_CLEAR);
+            DEBUG_PRINTF_MEM("BOOTROM DISABLED\n");
             mem.bootrom_disable = 1;
         } else {
-            printf("%sIO WRITE:0x%X 0x%X%s\n", ANSI_YELLOW, addr, data, ANSI_CLEAR);
+            DEBUG_PRINTF_MEM("IO WRITE:0x%X 0x%X\n", addr, data);
             mem.io_reg[addr-0xFF00] = data;
         }
     } else if (addr <= 0xFFFE) {
