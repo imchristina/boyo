@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <signal.h>
-#include <SDL/SDL.h>
+#include <SDL3/SDL.h>
 
 #include "main.h"
 #include "mem.h"
@@ -10,22 +10,21 @@
 #include "timer.h"
 #include "log.h"
 
-#define TARGET_FRAMETIME_NS 16742706L
-
 bool emu_running = 1;
 
 int main() {
     // SDL stuff
     SDL_Init(SDL_INIT_VIDEO);
     signal(SIGINT, SIG_DFL); // Return ctrl-c to normal
-    SDL_Surface *screen = SDL_SetVideoMode(160, 144, 8, 0);
+    SDL_Window *win = SDL_CreateWindow("Boyo", 160, 144, 0);
+    SDL_Surface *screen = SDL_GetWindowSurface(win);
 
     // Get colors here because MapRGB is slow
-    uint8_t sdl_col[4];
-    sdl_col[0] = SDL_MapRGB(screen->format, 255, 255, 255);
-    sdl_col[1] = SDL_MapRGB(screen->format, 170, 170, 170);
-    sdl_col[2] = SDL_MapRGB(screen->format, 85, 85, 85);
-    sdl_col[3] = SDL_MapRGB(screen->format, 0, 0, 0);
+    uint32_t sdl_col[4];
+    sdl_col[0] = SDL_MapSurfaceRGB(screen, 255, 255, 255);
+    sdl_col[1] = SDL_MapSurfaceRGB(screen, 170, 170, 170);
+    sdl_col[2] = SDL_MapSurfaceRGB(screen, 85, 85, 85);
+    sdl_col[3] = SDL_MapSurfaceRGB(screen, 0, 0, 0);
 
     // Open boot/game roms
     mem_open_bootrom("dmg_boot.bin");
@@ -40,12 +39,16 @@ int main() {
 
     cpu_reset();
 
+    uint64_t perf_count_freq = SDL_GetPerformanceFrequency();
+    uint64_t perf_count_start = SDL_GetPerformanceCounter();
+    float target_frametime = 16.666f;
+
     // Main loop
     SDL_Event e;
     uint8_t t = 0; // Time to next instruction
-    uint8_t sdl_fb[160*144];
+    uint32_t sdl_fb[160*144*4];
     while (emu_running) {
-        bool new_frame;
+        bool new_frame = false;
         // Execute instruction/fetch next
         if (t == 0) {
             cpu_writeback();
@@ -64,17 +67,29 @@ int main() {
                 sdl_fb[i] = sdl_col[ppu.fb[i]];
             }
 
-            memcpy(screen->pixels, sdl_fb, 160*144);
-            SDL_UpdateRect(screen, 0, 0, 0, 0);
+            memcpy(screen->pixels, sdl_fb, 160*144*4);
+
+            SDL_UpdateWindowSurface(win);
+
+            // Limit framerate
+            uint64_t perf_count_end = SDL_GetPerformanceCounter();
+            float elapsed = (float)((perf_count_end - perf_count_start) * 1000) / perf_count_freq;
+
+            if (elapsed < target_frametime) {
+                SDL_Delay(target_frametime - elapsed);
+            }
+
+            perf_count_start = SDL_GetPerformanceCounter();
         }
 
         while (new_frame && SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
+            if (e.type == SDL_EVENT_QUIT) {
                 emu_running = 0;
             }
         }
     }
 
+    SDL_DestroyWindow(win);
     SDL_Quit();
     return 0;
 }
