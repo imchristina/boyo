@@ -20,11 +20,7 @@ void timer_execute(uint8_t t) {
         timer.counter += 1;
 
         // DIV
-        if (*timer.div != timer.div_last) {
-            timer.counter = 0;
-        }
         *timer.div = ((timer.counter >> 8) & 0xFF);
-        timer.div_last = *timer.div;
 
         // TIMA
         if (*timer.tac & TAC_ENABLE) {
@@ -55,7 +51,34 @@ void timer_execute(uint8_t t) {
     if (t == 0) {
         // The clock stopped, reset counter
         timer.counter = 0;
-        timer.div_last = 0;
+    }
+}
+
+uint8_t timer_io_read(uint8_t addr) {
+    switch (addr) {
+        case 0x04: return *timer.div; break;
+        case 0x05: return *timer.tima; break;
+        case 0x06: return *timer.tma; break;
+        case 0x07: return *timer.tac; break;
+        default:
+            printf("Bad timer IO read");
+            return 0;
+            break;
+    }
+}
+
+void timer_io_write(uint8_t addr, uint8_t data) {
+    switch (addr) {
+        case 0x04:
+            *timer.div = data;
+            timer.counter = 0;
+            break;
+        case 0x05: *timer.tima = data; break;
+        case 0x06: *timer.tma = data; break;
+        case 0x07: *timer.tac = data; break;
+        default:
+            printf("Bad timer IO write");
+            break;
     }
 }
 

@@ -1,7 +1,8 @@
+#include <stdint.h>
+
 #include "ppu.h"
 #include "mem.h"
-
-#include <stdint.h>
+#include "log.h"
 
 #define PPU_MODE_HBLANK     0
 #define PPU_MODE_VBLANK     1
@@ -184,4 +185,53 @@ bool ppu_execute(uint8_t t) {
     }
 
     return new_frame;
+}
+
+void oam_dma(uint8_t data) {
+    DEBUG_PRINTF_PPU("OAM DMA:0x%X00\n", data);
+    for (uint16_t i = 0; i <= 0x9F; i++) {
+        uint16_t data_addr = ((uint16_t)data << 8) + i;
+        mem.oam[i] = mem_read(data_addr);
+    }
+}
+
+uint8_t ppu_io_read(uint8_t addr) {
+    switch (addr) {
+        case 0x40: return *ppu.lcdc; break;
+        case 0x41: return *ppu.stat; break;
+        case 0x42: return *ppu.scy; break;
+        case 0x43: return *ppu.scx; break;
+        case 0x44: return *ppu.ly; break;
+        case 0x45: return *ppu.lyc; break;
+        case 0x46: return *ppu.dma; break;
+        case 0x47: return *ppu.bgp; break;
+        case 0x48: return *ppu.obp0; break;
+        case 0x49: return *ppu.obp1; break;
+        case 0x4A: return *ppu.wy; break;
+        case 0x4B: return *ppu.wx; break;
+        default:
+            printf("Bad PPU IO read");
+            return 0;
+            break;
+    }
+}
+
+void ppu_io_write(uint8_t addr, uint8_t data) {
+    switch (addr) {
+        case 0x40: *ppu.lcdc = data; break;
+        case 0x41: *ppu.stat = data; break;
+        case 0x42: *ppu.scy = data; break;
+        case 0x43: *ppu.scx = data; break;
+        case 0x44: *ppu.ly = data; break;
+        case 0x45: *ppu.lyc = data; break;
+        case 0x46: oam_dma(data); break;
+        case 0x47: *ppu.bgp = data; break;
+        case 0x48: *ppu.obp0 = data; break;
+        case 0x49: *ppu.obp1 = data; break;
+        case 0x4A: *ppu.wy = data; break;
+        case 0x4B: *ppu.wx = data; break;
+        default:
+            printf("Bad PPU IO write");
+            break;
+    }
 }

@@ -10,6 +10,8 @@
 #include "timer.h"
 #include "log.h"
 
+#define TARGET_FRAMETIME_NS 16742706L
+
 bool emu_running = 1;
 
 int main() {
@@ -34,7 +36,6 @@ int main() {
     for (int i = 0x134; i < 0x13E; i++) {
         header_title[i-0x134] = mem_read(i);
     }
-
     printf("%s %s\n","Cartridge Header Title:", header_title);
 
     cpu_reset();
@@ -52,19 +53,19 @@ int main() {
         } else { // Do IO mapped stuff here
             new_frame = ppu_execute(t);
             timer_execute(t);
-
-            if (new_frame) {
-                DEBUG_PRINTF("NEW FRAME\n");
-
-                // Convert GB color to SDL 8-bit
-                for (int i = 0; i < 160*144; i++) {
-                    sdl_fb[i] = sdl_col[ppu.fb[i]];
-                }
-
-                memcpy(screen->pixels, sdl_fb, 160*144);
-                SDL_UpdateRect(screen, 0, 0, 0, 0);
-            }
             t = 0;
+        }
+
+        if (new_frame) {
+            DEBUG_PRINTF("NEW FRAME\n");
+
+            // Convert GB color to SDL 8-bit
+            for (int i = 0; i < 160*144; i++) {
+                sdl_fb[i] = sdl_col[ppu.fb[i]];
+            }
+
+            memcpy(screen->pixels, sdl_fb, 160*144);
+            SDL_UpdateRect(screen, 0, 0, 0, 0);
         }
 
         while (new_frame && SDL_PollEvent(&e)) {

@@ -28,5 +28,7 @@ typedef struct {
 extern ppu_t ppu;
 
 bool ppu_execute(uint8_t t);
+uint8_t ppu_io_read(uint8_t addr);
+void ppu_io_write(uint8_t addr, uint8_t data);
 
 #endif

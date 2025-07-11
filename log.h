@@ -11,5 +11,6 @@
 #define DEBUG_PRINTF(...) //printf(__VA_ARGS__)
 #define DEBUG_PRINTF_CPU(...) //printf(__VA_ARGS__)
 #define DEBUG_PRINTF_MEM(...) //printf(__VA_ARGS__)
+#define DEBUG_PRINTF_PPU(...) //printf(__VA_ARGS__)
 
 #endif

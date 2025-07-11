@@ -3,11 +3,42 @@
 #include <stdlib.h>
 
 #include "mem.h"
+#include "ppu.h"
+#include "timer.h"
 #include "log.h"
 
 #define MEM_WRITE_NEXT_LEN 4
 
 mem_t mem = {};
+
+uint8_t mem_io_read(uint8_t addr) {
+    DEBUG_PRINTF_MEM("IO READ:0x%X ", addr);
+
+    if (addr == 0x00) {
+        return 0x0F;
+    } else if (addr >= 0x04 && addr <= 0x07) {
+        return timer_io_read(addr);
+    } else if (addr > 0x40 && addr <= 0x4B) {
+        return ppu_io_read(addr);
+    } else {
+        return mem.io_reg[addr-0x00];
+    }
+}
+
+void mem_io_write(uint8_t addr, uint8_t data) {
+    DEBUG_PRINTF_MEM("IO WRITE:0x%X 0x%X\n", addr, data);
+
+    if (addr >= 0x04 && addr <= 0x07) {
+        timer_io_write(addr, data);
+    } else if (addr >= 0x40 && addr <= 0x4B) {
+        ppu_io_write(addr, data);
+    } else if (addr == 0x50 && data) {
+        DEBUG_PRINTF_MEM("BOOTROM DISABLED\n");
+        mem.bootrom_disable = 1;
+    } else {
+        mem.io_reg[addr-0x00] = data;
+    }
+}
 
 uint8_t mem_read(uint16_t addr) {
     if ((addr < 256) && !mem.bootrom_disable) {
@@ -27,11 +58,7 @@ uint8_t mem_read(uint16_t addr) {
     } else if (addr <= 0xFEFF) {
         return 0;
     } else if (addr <= 0xFF7F) {
-        DEBUG_PRINTF_MEM("IO READ:0x%X ", addr);
-        if (addr == 0xFF00) {
-            return 0x0F;
-        }
-        return mem.io_reg[addr-0xFF00];
+        return mem_io_read(addr & 0x00FF);
     } else if (addr <= 0xFFFE) {
         return mem.hram[addr-0xFF80];
     } else if (addr == 0xFFFF) {
@@ -59,19 +86,7 @@ void mem_write(uint16_t addr, uint8_t data) {
     } else if (addr <= 0xFEFF) {
         // Do nothing
     } else if (addr <= 0xFF7F) {
-        if (addr == 0xFF46) {
-            DEBUG_PRINTF_MEM("OAM DMA:0x%X00\n", data);
-            for (uint16_t i = 0; i <= 0x9F; i++) {
-                uint16_t data_addr = ((uint16_t)data << 8) + i;
-                mem.oam[i] = mem_read(data_addr);
-            }
-        } else if (addr == 0xFF50 && data) {
-            DEBUG_PRINTF_MEM("BOOTROM DISABLED\n");
-            mem.bootrom_disable = 1;
-        } else {
-            DEBUG_PRINTF_MEM("IO WRITE:0x%X 0x%X\n", addr, data);
-            mem.io_reg[addr-0xFF00] = data;
-        }
+        mem_io_write(addr & 0x00FF, data);
     } else if (addr <= 0xFFFE) {
         mem.hram[addr-0xFF80] = data;
     } else if (addr == 0xFFFF) {
