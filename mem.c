@@ -5,6 +5,7 @@
 #include "mem.h"
 #include "ppu.h"
 #include "timer.h"
+#include "joypad.h"
 #include "log.h"
 
 #define MEM_WRITE_NEXT_LEN 4
@@ -15,7 +16,7 @@ uint8_t mem_io_read(uint8_t addr) {
     DEBUG_PRINTF_MEM("IO READ:0x%X ", addr);
 
     if (addr == 0x00) {
-        return 0x0F;
+        return joypad_io_read(addr);
     } else if (addr >= 0x04 && addr <= 0x07) {
         return timer_io_read(addr);
     } else if (addr > 0x40 && addr <= 0x4B) {
@@ -28,7 +29,9 @@ uint8_t mem_io_read(uint8_t addr) {
 void mem_io_write(uint8_t addr, uint8_t data) {
     DEBUG_PRINTF_MEM("IO WRITE:0x%X 0x%X\n", addr, data);
 
-    if (addr >= 0x04 && addr <= 0x07) {
+    if (addr == 0x00) {
+      joypad_io_write(addr, data);
+    } else if (addr >= 0x04 && addr <= 0x07) {
         timer_io_write(addr, data);
     } else if (addr >= 0x40 && addr <= 0x4B) {
         ppu_io_write(addr, data);

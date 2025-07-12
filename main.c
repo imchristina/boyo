@@ -8,6 +8,7 @@
 #include "cpu.h"
 #include "ppu.h"
 #include "timer.h"
+#include "joypad.h"
 #include "log.h"
 
 bool emu_running = 1;
@@ -45,19 +46,18 @@ int main() {
 
     // Main loop
     SDL_Event e;
-    uint8_t t = 0; // Time to next instruction
     uint32_t sdl_fb[160*144*4];
     while (emu_running) {
+        uint8_t t = 0; // Time to next instruction
         bool new_frame = false;
+
         // Execute instruction/fetch next
-        if (t == 0) {
-            cpu_writeback();
-            t = cpu_execute();
-        } else { // Do IO mapped stuff here
-            new_frame = ppu_execute(t);
-            timer_execute(t);
-            t = 0;
-        }
+        cpu_writeback();
+        t = cpu_execute();
+
+        // Do IO mapped stuff here
+        new_frame = ppu_execute(t);
+        timer_execute(t);
 
         if (new_frame) {
             DEBUG_PRINTF("NEW FRAME\n");
@@ -76,17 +76,46 @@ int main() {
             float elapsed = (float)((perf_count_end - perf_count_start) * 1000) / perf_count_freq;
 
             if (elapsed < target_frametime) {
-                SDL_Delay(target_frametime - elapsed);
+                SDL_Delay((uint32_t)(target_frametime - elapsed));
             }
 
             perf_count_start = SDL_GetPerformanceCounter();
-        }
 
-        while (new_frame && SDL_PollEvent(&e)) {
-            if (e.type == SDL_EVENT_QUIT) {
-                emu_running = 0;
+            while (SDL_PollEvent(&e)) {
+                switch (e.type) {
+                    case SDL_EVENT_QUIT: emu_running = 0; break;
+                    case SDL_EVENT_KEY_DOWN:
+                        switch (e.key.key) {
+                            case SDLK_L: joypad_down(JOYPAD_BUTTON_A); break;
+                            case SDLK_K: joypad_down(JOYPAD_BUTTON_B); break;
+                            case SDLK_H: joypad_down(JOYPAD_BUTTON_START); break;
+                            case SDLK_G: joypad_down(JOYPAD_BUTTON_SELECT); break;
+                            case SDLK_W: joypad_down(JOYPAD_DPAD_UP); break;
+                            case SDLK_S: joypad_down(JOYPAD_DPAD_DOWN); break;
+                            case SDLK_A: joypad_down(JOYPAD_DPAD_LEFT); break;
+                            case SDLK_D: joypad_down(JOYPAD_DPAD_RIGHT); break;
+                            default: break;
+                        }
+                        break;
+                    case SDL_EVENT_KEY_UP:
+                        switch (e.key.key) {
+                            case SDLK_L: joypad_up(JOYPAD_BUTTON_A); break;
+                            case SDLK_K: joypad_up(JOYPAD_BUTTON_B); break;
+                            case SDLK_H: joypad_up(JOYPAD_BUTTON_START); break;
+                            case SDLK_G: joypad_up(JOYPAD_BUTTON_SELECT); break;
+                            case SDLK_W: joypad_up(JOYPAD_DPAD_UP); break;
+                            case SDLK_S: joypad_up(JOYPAD_DPAD_DOWN); break;
+                            case SDLK_A: joypad_up(JOYPAD_DPAD_LEFT); break;
+                            case SDLK_D: joypad_up(JOYPAD_DPAD_RIGHT); break;
+                            default: break;
+                        }
+                        break;
+                    default: break;
+                }
             }
         }
+
+
     }
 
     SDL_DestroyWindow(win);
