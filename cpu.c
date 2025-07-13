@@ -280,11 +280,13 @@ static void add_a(uint8_t *reg) {
 }
 
 static void adc_a(uint8_t *reg) {
-    cpu_next.a += *reg + flag_get_c();
-    flag_set_z(cpu_next.a);
+    uint8_t carry = flag_get_c();
+    uint16_t result = cpu.a + *reg + carry;
+    flag_set_z((uint8_t)result);
     flag_set_n(0);
-    flag_set_h(((cpu.a & 0x0F) + (*reg & 0x0F) + flag_get_c()) > 0x0F);
-    flag_set_c(cpu_next.a < cpu.a);
+    flag_set_h(((cpu.a & 0x0F) + (*reg & 0x0F) + carry) > 0x0F);
+    flag_set_c(result > 0xFF);
+    cpu_next.a = (uint8_t)result;
 }
 
 static void sub_a(uint8_t *reg) {
@@ -296,11 +298,13 @@ static void sub_a(uint8_t *reg) {
 }
 
 static void sbc_a(uint8_t *reg) {
-    cpu_next.a -= *reg - flag_get_c();
-    flag_set_z(cpu_next.a);
+    uint8_t carry = flag_get_c();
+    uint16_t result = cpu.a - *reg - carry;
+    flag_set_z((uint8_t)result);
     flag_set_n(1);
-    flag_set_h((cpu.a & 0x0F) < ((*reg & 0x0F) + flag_get_c()));
-    flag_set_c(*reg > cpu.a);
+    flag_set_h((cpu.a & 0x0F) < ((*reg & 0x0F) + carry));
+    flag_set_c(result > 0xFF);
+    cpu_next.a = (uint8_t)result;
 }
 
 static void and_a(uint8_t *reg) {
@@ -1538,7 +1542,7 @@ uint8_t cpu_execute() {
             case 0xCE: // ADC A,n8
                 t = 8;
                 cpu_next.pc += 2;
-                n8 = mem_read(cpu.pc+1) + flag_get_c();
+                n8 = mem_read(cpu.pc+1);
                 adc_a(&n8);
                 break;
             case 0xCF: // RST $08
@@ -1672,10 +1676,10 @@ uint8_t cpu_execute() {
                 cpu_next.pc += 2;
                 n8 = mem_read(cpu.pc+1);
                 cpu_next.sp += (int8_t)n8;
-                flag_set_z(0);
+                flag_set_z(1);
                 flag_set_n(0);
-                flag_set_h(((cpu.sp & 0x0F) + ((int8_t)n8 & 0x0F)) > 0x0F);
-                flag_set_c(((cpu.sp & 0xFF) + (int8_t)n8) > 0xFF);
+                flag_set_h(((cpu.sp & 0x0F) + (n8 & 0x0F)) > 0x0F);
+                flag_set_c(((cpu.sp & 0xFF) + n8) > 0xFF);
                 break;
             case 0xF0: // LDH A,[a8]
                 t = 12;
@@ -1716,10 +1720,10 @@ uint8_t cpu_execute() {
                 cpu_next.pc += 2;
                 n8 = mem_read(cpu.pc+1);
                 reg_hl_write(cpu.sp + (int8_t)n8);
-                flag_set_z(0);
+                flag_set_z(1);
                 flag_set_n(0);
-                flag_set_h(((cpu.sp & 0x0F) + ((int8_t)n8 & 0x0F)) > 0x0F);
-                flag_set_c(((cpu.sp & 0xFF) + (int8_t)n8) > 0xFF);
+                flag_set_h(((cpu.sp & 0x0F) + (n8 & 0x0F)) > 0x0F);
+                flag_set_c(((cpu.sp & 0xFF) + n8) > 0xFF);
                 break;
             case 0xF9: // LD SP,HL
                 t = 8;
