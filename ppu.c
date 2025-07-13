@@ -10,6 +10,8 @@
 #define PPU_MODE_DRAWING    3
 
 #define LCDC_BG_WIN_ENABLE      0b00000001
+#define LCDC_OBJ_ENABLE         0b00000010
+#define LCDC_OBJ_SIZE           0b00000100
 #define LCDC_BG_TILEMAP         0b00001000
 #define LCDC_BG_WIN_TILE_DATA   0b00010000
 #define LCDC_WIN_ENABLE         0b00100000
@@ -22,6 +24,11 @@
 #define STAT_VBLANK_INT     0b00010000
 #define STAT_OAM_INT        0b00100000
 #define STAT_LYC_INT        0b01000000
+
+#define OBJ_DMG_PALETTE 0b00010000
+#define OBJ_X_FLIP      0b00100000
+#define OBJ_Y_FLIP      0b01000000
+#define OBJ_PRIORITY    0b10000000
 
 ppu_t ppu = {
     .lcdc = &mem.io_reg[0x40],
@@ -113,6 +120,22 @@ static void draw() {
     }
 
     // Objects
+    if (*ppu.lcdc & LCDC_OBJ_ENABLE) {
+        int x = ppu.lx + 8;
+        int y = *ppu.ly + 16;
+        for (int i = 0; i < 0xA0; i += 4) {
+            int obj_y = mem.oam[i];
+            int obj_x = mem.oam[i+1];
+            int obj_tile = mem.oam[i+2];
+            int obj_flags = mem.oam[i+3];
+
+            if (y >= obj_y && y < obj_y+8 && x >= obj_x && x < obj_x+8) {
+                uint8_t tile_x = x - obj_x;
+                uint8_t tile_y = y - obj_y;
+                pixel_color = tile_pixel(tile_x, tile_y, obj_tile, 0);
+            }
+        }
+    }
 
     ppu.fb[(*ppu.ly * 160) + ppu.lx] = pixel_color;
 }
