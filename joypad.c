@@ -6,7 +6,7 @@
 gb_joypad_t joypad = {
     .buttons = 0x0F,
     .dpad = 0x0F,
-    .select = JOYPAD_SELECT_BUTTONS | JOYPAD_SELECT_DPAD
+    .select = 0
 };
 
 void joypad_down(uint8_t mask) {
@@ -28,13 +28,16 @@ void joypad_up(uint8_t mask) {
 uint8_t joypad_io_read(uint8_t addr) {
     switch (addr) {
         case 0x00:
+            uint8_t state = 0x0F;
+
             if ((joypad.select & JOYPAD_SELECT_BUTTONS) == 0) {
-                return joypad.select | joypad.buttons;
-            } else if ((joypad.select & JOYPAD_SELECT_DPAD) == 0) {
-                return joypad.select | joypad.dpad;
-            } else {
-                return joypad.select | 0x0F;
+                state &= joypad.buttons;
             }
+            if ((joypad.select & JOYPAD_SELECT_DPAD) == 0) {
+                state &= joypad.dpad;
+            }
+
+            return 0b11000000 | joypad.select | state;
             break;
         default:
             printf("Bad joypad IO read");

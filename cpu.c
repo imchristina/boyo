@@ -169,7 +169,7 @@ static void prefix_sra(uint8_t *reg) {
 }
 
 static void prefix_swap(uint8_t *reg) {
-    bool result = (*reg >> 4) | (*reg << 4);
+    uint8_t result = (*reg >> 4) | (*reg << 4);
     flag_set_z(result);
     flag_set_n(0);
     flag_set_h(0);
@@ -195,6 +195,10 @@ static void prefix_bit(uint8_t bit, uint8_t *reg) {
 
 static void prefix_res(uint8_t bit, uint8_t *reg) {
     *reg &= ~(1 << bit);
+}
+
+static void prefix_set(uint8_t bit, uint8_t *reg) {
+    *reg |= (1 << bit);
 }
 
 // Execute prefixed instructions
@@ -246,6 +250,14 @@ bool execute_prefix(uint8_t op) {
         case 0x1A: prefix_res(5, reg); break;
         case 0x0B: prefix_res(6, reg); break;
         case 0x1B: prefix_res(7, reg); break;
+        case 0x0C: prefix_set(0, reg); break;
+        case 0x1C: prefix_set(1, reg); break;
+        case 0x0D: prefix_set(2, reg); break;
+        case 0x1D: prefix_set(3, reg); break;
+        case 0x0E: prefix_set(4, reg); break;
+        case 0x1E: prefix_set(5, reg); break;
+        case 0x0F: prefix_set(6, reg); break;
+        case 0x1F: prefix_set(7, reg); break;
         default:
             printf("Unknown PREFIX OP:0x%X\n", op);
             exit(1);
@@ -271,7 +283,7 @@ static void adc_a(uint8_t *reg) {
     cpu_next.a += *reg + flag_get_c();
     flag_set_z(cpu_next.a);
     flag_set_n(0);
-    flag_set_h(((cpu.a & 0x0F) + (*reg & 0x0F)) > 0x0F);
+    flag_set_h(((cpu.a & 0x0F) + (*reg & 0x0F) + flag_get_c()) > 0x0F);
     flag_set_c(cpu_next.a < cpu.a);
 }
 
@@ -287,7 +299,7 @@ static void sbc_a(uint8_t *reg) {
     cpu_next.a -= *reg - flag_get_c();
     flag_set_z(cpu_next.a);
     flag_set_n(1);
-    flag_set_h((cpu.a & 0x0F) < (*reg & 0x0F));
+    flag_set_h((cpu.a & 0x0F) < ((*reg & 0x0F) + flag_get_c()));
     flag_set_c(*reg > cpu.a);
 }
 
@@ -1329,7 +1341,7 @@ uint8_t cpu_execute() {
             case 0xAC: // XOR A,H
                 t = 4;
                 cpu_next.pc += 1;
-                xor_a(&cpu.l);
+                xor_a(&cpu.h);
                 break;
             case 0xAD: // XOR A,L
                 t = 4;
@@ -1529,6 +1541,12 @@ uint8_t cpu_execute() {
                 n8 = mem_read(cpu.pc+1) + flag_get_c();
                 adc_a(&n8);
                 break;
+            case 0xCF: // RST $08
+                t = 16;
+                cpu_next.sp -= 2;
+                mem_write_next16(cpu_next.sp, cpu.pc+1);
+                cpu_next.pc = 0x0008;
+                break;
             case 0xD0: // RET NC
                 if (flag_get_c()) { // Not taken
                     t = 8;
@@ -1588,6 +1606,12 @@ uint8_t cpu_execute() {
                 n8 = mem_read(cpu.pc+1);
                 sbc_a(&n8);
                 break;
+            case 0xDF: // RST $18
+                t = 16;
+                cpu_next.sp -= 2;
+                mem_write_next16(cpu_next.sp, cpu.pc+1);
+                cpu_next.pc = 0x0018;
+                break;
             case 0xE0: // LDH [a8],A
                 t = 12;
                 cpu_next.pc += 2;
@@ -1637,11 +1661,17 @@ uint8_t cpu_execute() {
                 mem_write_next16(cpu_next.sp, cpu.pc+1);
                 cpu_next.pc = 0x0028;
                 break;
+            case 0xE7: // RST $20
+                t = 16;
+                cpu_next.sp -= 2;
+                mem_write_next16(cpu_next.sp, cpu.pc+1);
+                cpu_next.pc = 0x0020;
+                break;
             case 0xE8: // ADD SP,e8
                 t = 16;
                 cpu_next.pc += 2;
                 n8 = mem_read(cpu.pc+1);
-                cpu.sp += (int8_t)n8;
+                cpu_next.sp += (int8_t)n8;
                 flag_set_z(0);
                 flag_set_n(0);
                 flag_set_h(((cpu.sp & 0x0F) + ((int8_t)n8 & 0x0F)) > 0x0F);
@@ -1674,6 +1704,12 @@ uint8_t cpu_execute() {
                 cpu_next.pc += 2;
                 n8 = mem_read(cpu.pc + 1);
                 or_a(&n8);
+                break;
+            case 0xF7: // RST $30
+                t = 16;
+                cpu_next.sp -= 2;
+                mem_write_next16(cpu_next.sp, cpu.pc+1);
+                cpu_next.pc = 0x0030;
                 break;
             case 0xF8: // LD HL,SP+e8
                 t = 12;
