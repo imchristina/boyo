@@ -403,7 +403,7 @@ uint8_t cpu_execute() {
                 t = 4;
                 cpu_next.pc += 1;
                 cpu_next.a = (cpu.a << 1) | (cpu.a >> 7);
-                flag_set_z(0);
+                flag_set_z(1);
                 flag_set_n(0);
                 flag_set_h(0);
                 flag_set_c(cpu.a >> 7);
@@ -457,7 +457,7 @@ uint8_t cpu_execute() {
                 t = 4;
                 cpu_next.pc += 1;
                 cpu_next.a = (cpu.a >> 1) | (cpu.a << 7);
-                flag_set_z(0);
+                flag_set_z(1);
                 flag_set_n(0);
                 flag_set_h(0);
                 flag_set_c(cpu.a & 1);
@@ -507,7 +507,7 @@ uint8_t cpu_execute() {
                 t = 4;
                 cpu_next.pc += 1;
                 cpu_next.a = (cpu.a << 1) + flag_get_c();
-                flag_set_z(0);
+                flag_set_z(1);
                 flag_set_n(0);
                 flag_set_h(0);
                 flag_set_c(cpu.a >> 7);
@@ -560,7 +560,7 @@ uint8_t cpu_execute() {
                 t = 4;
                 cpu_next.pc += 1;
                 cpu_next.a = (cpu.a >> 1) + ((uint8_t)flag_get_c() << 7);
-                flag_set_z(0);
+                flag_set_z(1);
                 flag_set_n(0);
                 flag_set_h(0);
                 flag_set_c(cpu.a & 1);
@@ -684,7 +684,7 @@ uint8_t cpu_execute() {
                 t = 4;
                 cpu_next.pc += 1;
                 cpu_next.a = ~cpu.a;
-                flag_set_n(0);
+                flag_set_n(1);
                 flag_set_h(1);
                 break;
             case 0x30: // JR NC,e8
@@ -740,6 +740,8 @@ uint8_t cpu_execute() {
             case 0x37: // SCF
                 t = 4;
                 cpu_next.pc += 1;
+                flag_set_n(0);
+                flag_set_h(0);
                 flag_set_c(1);
                 break;
             case 0x38: // JR C,e8
@@ -795,6 +797,8 @@ uint8_t cpu_execute() {
             case 0x3F: // CCF
                 t = 4;
                 cpu_next.pc += 1;
+                flag_set_n(0);
+                flag_set_h(0);
                 flag_set_c(!flag_get_c());
                 break;
             case 0x40: // LD B,B
@@ -1501,6 +1505,12 @@ uint8_t cpu_execute() {
                 flag_set_h(((cpu.a & 0x0F) + (n8 & 0x0F)) > 0x0F);
                 flag_set_c(cpu_next.a < cpu.a);
                 break;
+            case 0xC7: // RST $00
+                t = 16;
+                cpu_next.sp -= 2;
+                mem_write_next16(cpu_next.sp, cpu.pc+1);
+                cpu_next.pc = 0x0000;
+                break;
             case 0xC8: // RET Z
                 if (!flag_get_z()) { // Not taken
                     t = 8;
@@ -1531,6 +1541,17 @@ uint8_t cpu_execute() {
                     t = 12;
                 } else {
                     t = 8;
+                }
+                break;
+            case 0xCC: // CALL Z,a16
+                if (!flag_get_z()) { // Not taken
+                    t = 12;
+                    cpu_next.pc += 3;
+                } else {
+                    t = 24;
+                    cpu_next.sp -= 2;
+                    mem_write_next16(cpu_next.sp, cpu.pc+3);
+                    cpu_next.pc = mem_read16(cpu.pc+1);
                 }
                 break;
             case 0xCD: // CALL a16
@@ -1576,6 +1597,17 @@ uint8_t cpu_execute() {
                     cpu_next.pc = mem_read16(cpu.pc+1);
                 }
                 break;
+            case 0xD4: // CALL NC,a16
+                if (flag_get_c()) { // Not taken
+                    t = 12;
+                    cpu_next.pc += 3;
+                } else {
+                    t = 24;
+                    cpu_next.sp -= 2;
+                    mem_write_next16(cpu_next.sp, cpu.pc+3);
+                    cpu_next.pc = mem_read16(cpu.pc+1);
+                }
+                break;
             case 0xD5: // PUSH DE
                 t = 16;
                 cpu_next.pc += 1;
@@ -1587,6 +1619,12 @@ uint8_t cpu_execute() {
                 cpu_next.pc += 2;
                 n8 = mem_read(cpu.pc+1);
                 sub_a(&n8);
+                break;
+            case 0xD7: // RST $10
+                t = 16;
+                cpu_next.sp -= 2;
+                mem_write_next16(cpu_next.sp, cpu.pc+1);
+                cpu_next.pc = 0x0010;
                 break;
             case 0xD8: // RET C
                 if (!flag_get_c()) { // Not taken
@@ -1603,6 +1641,26 @@ uint8_t cpu_execute() {
                 cpu_next.pc = mem_read16(cpu.sp);
                 cpu_next.sp += 2;
                 cpu_next.ime = 1;
+                break;
+            case 0xDA: // JP C,a16
+                if (!flag_get_c()) { // Not taken
+                    t = 12;
+                    cpu_next.pc += 3;
+                } else {
+                    t = 16;
+                    cpu_next.pc = mem_read16(cpu.pc+1);
+                }
+                break;
+            case 0xDC: // CALL C,a16
+                if (!flag_get_c()) { // Not taken
+                    t = 12;
+                    cpu_next.pc += 3;
+                } else {
+                    t = 24;
+                    cpu_next.sp -= 2;
+                    mem_write_next16(cpu_next.sp, cpu.pc+3);
+                    cpu_next.pc = mem_read16(cpu.pc+1);
+                }
                 break;
             case 0xDE: // SBC A,n8
                 t = 8;
@@ -1644,6 +1702,12 @@ uint8_t cpu_execute() {
                 n8 = mem_read(cpu.pc + 1);
                 and_a(&n8);
                 break;
+            case 0xE7: // RST $20
+                t = 16;
+                cpu_next.sp -= 2;
+                mem_write_next16(cpu_next.sp, cpu.pc+1);
+                cpu_next.pc = 0x0020;
+                break;
             case 0xE9: // JP HL
                 t = 4;
                 cpu_next.pc = reg_hl_read();
@@ -1665,12 +1729,6 @@ uint8_t cpu_execute() {
                 mem_write_next16(cpu_next.sp, cpu.pc+1);
                 cpu_next.pc = 0x0028;
                 break;
-            case 0xE7: // RST $20
-                t = 16;
-                cpu_next.sp -= 2;
-                mem_write_next16(cpu_next.sp, cpu.pc+1);
-                cpu_next.pc = 0x0020;
-                break;
             case 0xE8: // ADD SP,e8
                 t = 16;
                 cpu_next.pc += 2;
@@ -1691,6 +1749,11 @@ uint8_t cpu_execute() {
                 cpu_next.pc += 1;
                 reg_af_write(mem_read16(cpu.sp) & 0xFFF0);
                 cpu_next.sp += 2;
+                break;
+            case 0xF2: // LDH A,[C]
+                t = 8;
+                cpu_next.pc += 1;
+                cpu_next.a = mem_read(0xFF00+(uint16_t)cpu.c);
                 break;
             case 0xF3: // DI
                 t = 4;
