@@ -1281,7 +1281,7 @@ uint8_t cpu_execute() {
                 sbc_a(&n8);
                 break;
             case 0x9F: // SBC A,A
-                t = 8;
+                t = 4;
                 cpu_next.pc += 1;
                 sbc_a(&cpu.a);
                 break;
@@ -1708,6 +1708,16 @@ uint8_t cpu_execute() {
                 mem_write_next16(cpu_next.sp, cpu.pc+1);
                 cpu_next.pc = 0x0020;
                 break;
+            case 0xE8: // ADD SP,e8
+                t = 16;
+                cpu_next.pc += 2;
+                n8 = mem_read(cpu.pc+1);
+                cpu_next.sp += (int8_t)n8;
+                flag_set_z(1);
+                flag_set_n(0);
+                flag_set_h(((cpu.sp & 0x0F) + (n8 & 0x0F)) > 0x0F);
+                flag_set_c(((cpu.sp & 0xFF) + n8) > 0xFF);
+                break;
             case 0xE9: // JP HL
                 t = 4;
                 cpu_next.pc = reg_hl_read();
@@ -1728,16 +1738,6 @@ uint8_t cpu_execute() {
                 cpu_next.sp -= 2;
                 mem_write_next16(cpu_next.sp, cpu.pc+1);
                 cpu_next.pc = 0x0028;
-                break;
-            case 0xE8: // ADD SP,e8
-                t = 16;
-                cpu_next.pc += 2;
-                n8 = mem_read(cpu.pc+1);
-                cpu_next.sp += (int8_t)n8;
-                flag_set_z(1);
-                flag_set_n(0);
-                flag_set_h(((cpu.sp & 0x0F) + (n8 & 0x0F)) > 0x0F);
-                flag_set_c(((cpu.sp & 0xFF) + n8) > 0xFF);
                 break;
             case 0xF0: // LDH A,[a8]
                 t = 12;

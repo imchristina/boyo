@@ -24,6 +24,7 @@
 #define STAT_VBLANK_INT     0b00010000
 #define STAT_OAM_INT        0b00100000
 #define STAT_LYC_INT        0b01000000
+#define STAT_UNUSED         0b10000000
 
 #define OBJ_DMG_PALETTE 0b00010000
 #define OBJ_X_FLIP      0b00100000
@@ -52,15 +53,13 @@ static uint8_t vram_read(uint16_t addr) {
 static uint8_t tile_pixel(uint8_t x, uint8_t y, uint8_t tile_id, bool bg_win) {
     // Get tile data address
     uint16_t tile_address;
-    if (!bg_win || *ppu.lcdc & LCDC_BG_WIN_TILE_DATA) {
+    if (!bg_win || (*ppu.lcdc & LCDC_BG_WIN_TILE_DATA)) {
         tile_address = 0x8000 + (tile_id * 16);
     } else {
-        if (tile_id <= 127) {
-            tile_address = 0x9000 + (tile_id * 16);
-        } else {
-            tile_address = 0x8800 + (tile_id * 16);
-        }
+        tile_address = 0x9000 + ((int8_t)tile_id * 16);
     }
+
+    if (tile_address == 0x9270) { printf("TILE ID:%X\n", tile_id); }
 
     // Get the high/low bytes
     uint8_t byte_h = vram_read(tile_address + (y * 2));
@@ -159,38 +158,34 @@ bool ppu_execute(uint8_t t) {
             // Defer final value until all sources are calculated
             bool stat_int_trans = (*ppu.lyc == *ppu.ly) & *ppu.stat & STAT_LYC_INT;
 
-            // PPU mode/timing
+            // State transitions/timing
+            if (dot_y < 144) {
+                if (dot_x == 0) {
+                    ppu.mode = PPU_MODE_OAM;
+                } else if (dot_x == 80) {
+                    ppu.mode = PPU_MODE_DRAWING;
+                } else if (dot_x == 252) {
+                    ppu.mode = PPU_MODE_HBLANK;
+                }
+            } else if (dot_y == 144 && dot_x == 0) {
+                ppu.mode = PPU_MODE_VBLANK;
+                mem.io_reg[0x0F] |= INT_VBLANK;
+            }
+
+            // PPU mode
             switch (ppu.mode) {
                 case PPU_MODE_HBLANK:
-                    if ((dot_x == 0) && (dot_y < 144)) {
-                        ppu.mode = PPU_MODE_OAM;
-                        stat_int_trans |= *ppu.stat & STAT_OAM_INT;
-                    } else if (dot_y >= 144) {
-                        mem.io_reg[0x0F] |= INT_VBLANK; // VBLANK interrupt
-                        ppu.mode = PPU_MODE_VBLANK;
-                        stat_int_trans |= *ppu.stat & STAT_VBLANK_INT;
-                    }
+                    stat_int_trans |= *ppu.stat & STAT_HBLANK_INT;
                     break;
                 case PPU_MODE_VBLANK:
-                    if (ppu.dot == 0) {
-                        ppu.mode = PPU_MODE_OAM;
-                        stat_int_trans |= *ppu.stat & STAT_OAM_INT;
-                    }
+                    stat_int_trans |= *ppu.stat & STAT_VBLANK_INT;
                     break;
                 case PPU_MODE_OAM:
-                    if (dot_x >= 80) {
-                        ppu.mode = PPU_MODE_DRAWING;
-                    }
+                    stat_int_trans |= *ppu.stat & STAT_OAM_INT;
                     break;
                 case PPU_MODE_DRAWING:
-                    if (dot_x >= 80+172) { // TODO variable timing
-                        ppu.lx = 0;
-                        ppu.mode = PPU_MODE_HBLANK;
-                        stat_int_trans |= *ppu.stat & STAT_HBLANK_INT;
-                    } else if (ppu.lx < 160) {
-                        draw();
-                        ppu.lx++;
-                    }
+                    ppu.lx = dot_x - 80;
+                    draw();
                     break;
             }
 
@@ -205,6 +200,8 @@ bool ppu_execute(uint8_t t) {
                 new_frame = true;
             }
         }
+    } else {
+        ppu.dot = 0;
     }
 
     return new_frame;
@@ -221,7 +218,7 @@ void oam_dma(uint8_t data) {
 uint8_t ppu_io_read(uint8_t addr) {
     switch (addr) {
         case 0x40: return *ppu.lcdc; break;
-        case 0x41: return *ppu.stat; break;
+        case 0x41: return *ppu.stat | STAT_UNUSED; break;
         case 0x42: return *ppu.scy; break;
         case 0x43: return *ppu.scx; break;
         case 0x44: return *ppu.ly; break;
