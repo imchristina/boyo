@@ -202,7 +202,7 @@ static void prefix_set(uint8_t bit, uint8_t *reg) {
 }
 
 // Execute prefixed instructions
-bool execute_prefix(uint8_t op) {
+int execute_prefix(uint8_t op) {
     uint8_t op_high = op >> 4;
     uint8_t op_low = op & 0xF;
 
@@ -267,7 +267,14 @@ bool execute_prefix(uint8_t op) {
         mem_write_next(reg_hl_read(), n8);
     }
 
-    return hl_mem; // Instruction needs an additonal t += 4
+    int t = 8;
+    if (hl_mem && ((op_high < 4) || (op_high > 7))) {
+        t = 16; // Non-bit HL instruction
+    } else if (hl_mem) {
+        t = 12; // Bit HL instruction
+    }
+
+    return t;
 }
 
 // Opcode helper functions
@@ -1537,11 +1544,7 @@ uint8_t cpu_execute() {
                 break;
             case 0xCB: // PREFIX
                 cpu_next.pc += 2;
-                if (execute_prefix(mem_read(cpu.pc+1))) {
-                    t = 12;
-                } else {
-                    t = 8;
-                }
+                t = execute_prefix(mem_read(cpu.pc+1));
                 break;
             case 0xCC: // CALL Z,a16
                 if (!flag_get_z()) { // Not taken

@@ -20,7 +20,7 @@ void timer_execute(uint8_t t) {
         timer.counter += 1;
 
         // DIV
-        *timer.div = ((timer.counter >> 8) & 0xFF);
+        *timer.div = ((timer.counter >> 6) & 0xFF);
 
         // TIMA
         if (*timer.tac & TAC_ENABLE) {
@@ -37,10 +37,11 @@ void timer_execute(uint8_t t) {
 
             // Execute on falling edge
             if (!clock && timer.clock_last) {
-                *timer.tima += 1;
                 if (*timer.tima == 0) {
                     *timer.tima = *timer.tma;
                     mem.io_reg[0x0F] |= INT_TIMER;
+                } else {
+                    *timer.tima += 1;
                 }
             }
 
@@ -70,7 +71,7 @@ uint8_t timer_io_read(uint8_t addr) {
 void timer_io_write(uint8_t addr, uint8_t data) {
     switch (addr) {
         case 0x04:
-            *timer.div = data;
+            *timer.div = 0;
             timer.counter = 0;
             break;
         case 0x05: *timer.tima = data; break;
