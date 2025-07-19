@@ -9,6 +9,7 @@
 #include "ppu.h"
 #include "timer.h"
 #include "joypad.h"
+#include "serial.h"
 #include "log.h"
 
 bool emu_running = 1;
@@ -57,6 +58,7 @@ int main() {
 
         new_frame = ppu_execute(t);
         timer_execute(t);
+        serial_execute(t);
 
         if (new_frame) {
             DEBUG_PRINTF("NEW FRAME\n");
