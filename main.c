@@ -52,10 +52,9 @@ int main() {
         bool new_frame = false;
 
         // Execute instruction/fetch next
-        cpu_writeback();
         t = cpu_execute();
+        cpu_writeback();
 
-        // Do IO mapped stuff here
         new_frame = ppu_execute(t);
         timer_execute(t);
 

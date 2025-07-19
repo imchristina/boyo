@@ -15,38 +15,35 @@ gb_timer_t timer = {
 };
 
 void timer_execute(uint8_t t) {
-    // Loop through M-cycles
-    for (int i = 0; i < (t/4); i++) {
+    // Loop through T-cycles
+    for (int i = 0; i < t; i++) {
         timer.counter += 1;
 
         // DIV
-        *timer.div = ((timer.counter >> 6) & 0xFF);
+        *timer.div = ((timer.counter >> 8) & 0xFF);
 
         // TIMA
-        if (*timer.tac & TAC_ENABLE) {
-            // Select the clock bit
-            uint8_t bit;
-            switch (*timer.tac & TAC_CLOCK) {
-                case 0: bit = 7; break;
-                case 1: bit = 1; break;
-                case 2: bit = 3; break;
-                case 3: bit = 5; break;
-            }
-
-            bool clock = (timer.counter >> bit) & 1;
-
-            // Execute on falling edge
-            if (!clock && timer.clock_last) {
-                if (*timer.tima == 0) {
-                    *timer.tima = *timer.tma;
-                    mem.io_reg[0x0F] |= INT_TIMER;
-                } else {
-                    *timer.tima += 1;
-                }
-            }
-
-            timer.clock_last = clock;
+        // Select the clock bit
+        uint8_t bit;
+        switch (*timer.tac & TAC_CLOCK) {
+            case 0: bit = 9; break;
+            case 1: bit = 3; break;
+            case 2: bit = 5; break;
+            case 3: bit = 7; break;
         }
+
+        bool clock = ((timer.counter >> bit) & 1) && (*timer.tac & TAC_ENABLE);
+
+        // Execute on falling edge
+        if (!clock && timer.clock_last) {
+            *timer.tima += 1;
+            if (*timer.tima == 0) {
+                *timer.tima = *timer.tma;
+                mem.io_reg[0x0F] |= INT_TIMER;
+            }
+        }
+
+        timer.clock_last = clock;
     }
 
     if (t == 0) {
