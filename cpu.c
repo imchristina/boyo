@@ -1860,11 +1860,11 @@ uint8_t cpu_execute() {
         mem_write_next16(cpu_next.sp, cpu.pc);
         cpu_next.pc = iaddress;
     } else if (cpu.halt) {
-        DEBUG_PRINTF_CPU("HALTED");
+        DEBUG_PRINTF_CPU("HALTED ");
         t = 4;
         cpu_next.halt = !(bool)(*iflag & mem.ie); // TODO emulate HALT bug
     } else if (cpu.stop) {
-        DEBUG_PRINTF_CPU("STOPPED");
+        DEBUG_PRINTF_CPU("STOPPED ");
         t = 0;
     }
 

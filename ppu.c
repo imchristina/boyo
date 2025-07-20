@@ -59,8 +59,6 @@ static uint8_t tile_pixel(uint8_t x, uint8_t y, uint8_t tile_id, bool bg_win) {
         tile_address = 0x9000 + ((int8_t)tile_id * 16);
     }
 
-    if (tile_address == 0x9270) { printf("TILE ID:%X\n", tile_id); }
-
     // Get the high/low bytes
     uint8_t byte_h = vram_read(tile_address + (y * 2));
     uint8_t byte_l = vram_read(tile_address + 1 + (y * 2));
@@ -131,7 +129,21 @@ static void draw() {
             if (y >= obj_y && y < obj_y+8 && x >= obj_x && x < obj_x+8) {
                 uint8_t tile_x = x - obj_x;
                 uint8_t tile_y = y - obj_y;
-                pixel_color = tile_pixel(tile_x, tile_y, obj_tile, 0);
+
+                if (obj_flags & OBJ_X_FLIP) {
+                    tile_x = 7 - tile_x;
+                }
+
+                if (obj_flags & OBJ_Y_FLIP) {
+                    tile_y = 7 - tile_y;
+                }
+
+                uint8_t obj_pixel_color = tile_pixel(tile_x, tile_y, obj_tile, 0);
+
+                // Pixel color ID 0 == transparent
+                if (obj_pixel_color != 0) {
+                    pixel_color = obj_pixel_color;
+                }
             }
         }
     }
@@ -202,6 +214,9 @@ bool ppu_execute(uint8_t t) {
         }
     } else {
         ppu.dot = 0;
+        ppu.mode = 0;
+        *ppu.ly = 0;
+        *ppu.stat &= ~(STAT_PPU_MODE | STAT_LYC_LY);
     }
 
     return new_frame;

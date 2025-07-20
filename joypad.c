@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "joypad.h"
+#include "mem.h"
 
 gb_joypad_t joypad = {
     .buttons = 0x0F,
@@ -15,6 +16,8 @@ void joypad_down(uint8_t mask) {
     } else if ((mask & JOYPAD_SELECT_DPAD) == 0) {
         joypad.dpad &= (mask & 0x0F);
     }
+
+    mem.io_reg[0x0F] |= INT_JOYPAD;
 }
 
 void joypad_up(uint8_t mask) {
