@@ -10,6 +10,7 @@
 #include "timer.h"
 #include "joypad.h"
 #include "serial.h"
+#include "cartridge.h"
 #include "log.h"
 
 bool emu_running = 1;
@@ -30,14 +31,10 @@ int main() {
 
     // Open boot/game roms
     mem_open_bootrom("dmg_boot.bin");
-    mem_open_rom("rom.gb");
+    cartridge_open_rom("rom.gb");
 
     // Get the game title out of the cartridge header
-    char header_title[13];
-    for (int i = 0x134; i < 0x13E; i++) {
-        header_title[i-0x134] = mem_read(i);
-    }
-    printf("%s %s\n","Cartridge Header Title:", header_title);
+    printf("%s %s\n","Cartridge Header Title:", cartridge.title);
 
     cpu_reset();
 

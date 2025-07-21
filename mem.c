@@ -7,6 +7,7 @@
 #include "timer.h"
 #include "joypad.h"
 #include "serial.h"
+#include "cartridge.h"
 #include "log.h"
 
 #define MEM_WRITE_NEXT_LEN 4
@@ -52,11 +53,11 @@ uint8_t mem_read(uint16_t addr) {
     if ((addr < 256) && !mem.bootrom_disable) {
         return mem.bootrom[addr];
     } else if (addr <= 0x7FFF) {
-        return mem.rom[addr];
+        return cartridge_read(addr);
     } else if (addr <= 0x9FFF) {
         return mem.vram[addr-0x8000];
     } else if (addr <= 0xBFFF) {
-        return mem.eram[addr-0xA000];
+        return cartridge_read(addr);
     } else if (addr <= 0xDFFF) {
         return mem.wram[addr-0xC000];
     } else if (addr <= 0xFDFF) {
@@ -80,11 +81,11 @@ uint8_t mem_read(uint16_t addr) {
 
 void mem_write(uint16_t addr, uint8_t data) {
     if (addr <= 0x7FFF) {
-        // Writes to rom ignored
+        cartridge_write(addr, data);
     } else if (addr <= 0x9FFF) {
         mem.vram[addr-0x8000] = data;
     } else if (addr <= 0xBFFF) {
-        mem.eram[addr-0xA000] = data;
+        cartridge_write(addr, data);
     } else if (addr <= 0xDFFF) {
         mem.wram[addr-0xC000] = data;
     } else if (addr <= 0xFDFF) {
@@ -122,17 +123,6 @@ void mem_open_bootrom(char *path) {
     }
 
     fread(mem.bootrom, 1, 256, rom);
-    fclose(rom);
-}
-
-void mem_open_rom(char *path) {
-    FILE *rom = fopen(path, "rb");
-    if (!rom) {
-        printf("Could not open %s\n", path);
-        exit(1);
-    }
-
-    fread(mem.rom, 1, 0x8000, rom);
     fclose(rom);
 }
 
