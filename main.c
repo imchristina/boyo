@@ -15,7 +15,12 @@
 
 bool emu_running = 1;
 
-int main() {
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        printf("Usage: %s rom.gb\n", argv[0]);
+        return 1;
+    }
+
     // SDL stuff
     SDL_Init(SDL_INIT_VIDEO);
     signal(SIGINT, SIG_DFL); // Return ctrl-c to normal
@@ -31,7 +36,7 @@ int main() {
 
     // Open boot/game roms
     mem_open_bootrom("dmg_boot.bin");
-    cartridge_open_rom("rom.gb");
+    cartridge_open_rom(argv[1]);
 
     // Get the game title out of the cartridge header
     printf("%s %s\n","Cartridge Header Title:", cartridge.title);
