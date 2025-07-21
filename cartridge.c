@@ -33,15 +33,15 @@ uint8_t cartridge_read(uint16_t addr) {
         case 0x01: // MBC1
         case 0x02: // MBC1+RAM
         case 0x03: // MBC1+RAM+BATTERY
-            if (addr <= 0x3FFF) {
+            if (addr <= 0x3FFF) { // ROM Bank 0
                 return cartridge.rom[addr];
-            } else if (addr <= 0x7FFF) {
-                uint16_t bank = cartridge.rom_bank;
+            } else if (addr <= 0x7FFF) { // ROM bank 1+
+                uint8_t bank = cartridge.rom_bank;
                 if (bank == 0) { bank = 1; }
 
-                uint16_t bank_addr = 0x4000 * (bank - 1);
+                int bank_addr = 0x4000 * (bank - 1);
                 return cartridge.rom[addr+bank_addr];
-            } else if (addr >= 0xA000 && addr <= 0xBFFF) {
+            } else if (addr >= 0xA000 && addr <= 0xBFFF) { // RAM
                 if (cartridge.ram_enable) {
                     uint16_t ram_addr = addr - 0xA000;
                     switch (cartridge.ram_size) {
