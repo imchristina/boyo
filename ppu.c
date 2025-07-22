@@ -31,20 +31,7 @@
 #define OBJ_Y_FLIP      0b01000000
 #define OBJ_PRIORITY    0b10000000
 
-ppu_t ppu = {
-    .lcdc = &mem.io_reg[0x40],
-    .stat = &mem.io_reg[0x41],
-    .scy = &mem.io_reg[0x42],
-    .scx = &mem.io_reg[0x43],
-    .ly = &mem.io_reg[0x44],
-    .lyc = &mem.io_reg[0x45],
-    .dma = &mem.io_reg[0x46],
-    .bgp = &mem.io_reg[0x47],
-    .obp0 = &mem.io_reg[0x48],
-    .obp1 = &mem.io_reg[0x49],
-    .wy = &mem.io_reg[0x4A],
-    .wx = &mem.io_reg[0x4B]
-};
+ppu_t ppu = {};
 
 static uint8_t vram_read(uint16_t addr) {
     return mem.vram[addr - 0x8000];
@@ -53,7 +40,7 @@ static uint8_t vram_read(uint16_t addr) {
 static uint8_t tile_pixel(uint8_t x, uint8_t y, uint8_t tile_id, bool bg_win) {
     // Get tile data address
     uint16_t tile_address;
-    if (!bg_win || (*ppu.lcdc & LCDC_BG_WIN_TILE_DATA)) {
+    if (!bg_win || (ppu.lcdc & LCDC_BG_WIN_TILE_DATA)) {
         tile_address = 0x8000 + (tile_id * 16);
     } else {
         tile_address = 0x9000 + ((int8_t)tile_id * 16);
@@ -75,14 +62,14 @@ static void draw() {
     uint8_t pixel_color = 0;
 
     // Background
-    if (*ppu.lcdc & LCDC_BG_WIN_ENABLE) {
+    if (ppu.lcdc & LCDC_BG_WIN_ENABLE) {
         // Get scrolled x/y values
-        int x = (ppu.lx + *ppu.scx) % 256;
-        int y = (*ppu.ly + *ppu.scy) % 256;
+        int x = (ppu.lx + ppu.scx) % 256;
+        int y = (ppu.ly + ppu.scy) % 256;
 
         // Get tile map area
         uint16_t tile_map_addr;
-        if (*ppu.lcdc & LCDC_BG_TILEMAP) {
+        if (ppu.lcdc & LCDC_BG_TILEMAP) {
             tile_map_addr = 0x9C00;
         } else {
             tile_map_addr = 0x9800;
@@ -95,15 +82,15 @@ static void draw() {
     }
 
     // Window
-    if ((*ppu.lcdc & LCDC_BG_WIN_ENABLE) && (*ppu.lcdc & LCDC_WIN_ENABLE)) {
-        if (ppu.lx >= *ppu.wx && *ppu.ly >= (*ppu.wy - 7)) {
+    if ((ppu.lcdc & LCDC_BG_WIN_ENABLE) && (ppu.lcdc & LCDC_WIN_ENABLE)) {
+        if (ppu.lx >= ppu.wx && ppu.ly >= (ppu.wy - 7)) {
             // Get window x/y values
-            int x = ppu.lx - (*ppu.wx - 7);
-            int y = *ppu.ly - *ppu.wy;
+            int x = ppu.lx - (ppu.wx - 7);
+            int y = ppu.ly - ppu.wy;
 
             // Get tile map area
             uint16_t tile_map_addr;
-            if (*ppu.lcdc & LCDC_WIN_TILEMAP) {
+            if (ppu.lcdc & LCDC_WIN_TILEMAP) {
                 tile_map_addr = 0x9C00;
             } else {
                 tile_map_addr = 0x9800;
@@ -117,9 +104,9 @@ static void draw() {
     }
 
     // Objects
-    if (*ppu.lcdc & LCDC_OBJ_ENABLE) {
+    if (ppu.lcdc & LCDC_OBJ_ENABLE) {
         int x = ppu.lx + 8;
-        int y = *ppu.ly + 16;
+        int y = ppu.ly + 16;
         for (int i = 0; i < 0xA0; i += 4) {
             int obj_y = mem.oam[i];
             int obj_x = mem.oam[i+1];
@@ -148,27 +135,27 @@ static void draw() {
         }
     }
 
-    ppu.fb[(*ppu.ly * 160) + ppu.lx] = pixel_color;
+    ppu.fb[(ppu.ly * 160) + ppu.lx] = pixel_color;
 }
 
 bool ppu_execute(uint8_t t) {
     // Do one dot per t
     bool new_frame = false;
 
-    if (*ppu.lcdc & LCDC_PPU_ENABLE) {
+    if (ppu.lcdc & LCDC_PPU_ENABLE) {
         for (int i = 0; i < t; i++) {
             // Helper variables
             int dot_x = ppu.dot % 456;
             int dot_y = ppu.dot / 456;
 
             // Set registers
-            *ppu.ly = dot_y;
-            *ppu.stat = (*ppu.stat & ~STAT_PPU_MODE) | (ppu.mode & 0x03); // PPU mode
-            *ppu.stat = (*ppu.stat & ~STAT_LYC_LY) | ((uint8_t)(*ppu.lyc == *ppu.ly) << 3); // LYC == LY
+            ppu.ly = dot_y;
+            ppu.stat = (ppu.stat & ~STAT_PPU_MODE) | (ppu.mode & 0x03); // PPU mode
+            ppu.stat = (ppu.stat & ~STAT_LYC_LY) | ((uint8_t)(ppu.lyc == ppu.ly) << 3); // LYC == LY
 
             // STAT line is common between all sources and only triggers on high transition
             // Defer final value until all sources are calculated
-            bool stat_int_trans = (*ppu.lyc == *ppu.ly) & *ppu.stat & STAT_LYC_INT;
+            bool stat_int_trans = (ppu.lyc == ppu.ly) & ppu.stat & STAT_LYC_INT;
 
             // State transitions/timing
             if (dot_y < 144) {
@@ -181,19 +168,19 @@ bool ppu_execute(uint8_t t) {
                 }
             } else if (dot_y == 144 && dot_x == 0) {
                 ppu.mode = PPU_MODE_VBLANK;
-                mem.io_reg[0x0F] |= INT_VBLANK;
+                mem.iflag |= INT_VBLANK;
             }
 
             // PPU mode
             switch (ppu.mode) {
                 case PPU_MODE_HBLANK:
-                    stat_int_trans |= *ppu.stat & STAT_HBLANK_INT;
+                    stat_int_trans |= ppu.stat & STAT_HBLANK_INT;
                     break;
                 case PPU_MODE_VBLANK:
-                    stat_int_trans |= *ppu.stat & STAT_VBLANK_INT;
+                    stat_int_trans |= ppu.stat & STAT_VBLANK_INT;
                     break;
                 case PPU_MODE_OAM:
-                    stat_int_trans |= *ppu.stat & STAT_OAM_INT;
+                    stat_int_trans |= ppu.stat & STAT_OAM_INT;
                     break;
                 case PPU_MODE_DRAWING:
                     ppu.lx = dot_x - 80;
@@ -202,7 +189,7 @@ bool ppu_execute(uint8_t t) {
             }
 
             if (!ppu.stat_int && stat_int_trans) {
-                mem.io_reg[0x0F] |= INT_STAT;
+                mem.iflag |= INT_STAT;
             }
             ppu.stat_int = stat_int_trans;
 
@@ -215,8 +202,8 @@ bool ppu_execute(uint8_t t) {
     } else {
         ppu.dot = 0;
         ppu.mode = 0;
-        *ppu.ly = 0;
-        *ppu.stat &= ~(STAT_PPU_MODE | STAT_LYC_LY);
+        ppu.ly = 0;
+        ppu.stat &= ~(STAT_PPU_MODE | STAT_LYC_LY);
     }
 
     return new_frame;
@@ -232,18 +219,18 @@ void oam_dma(uint8_t data) {
 
 uint8_t ppu_io_read(uint8_t addr) {
     switch (addr) {
-        case 0x40: return *ppu.lcdc; break;
-        case 0x41: return *ppu.stat | STAT_UNUSED; break;
-        case 0x42: return *ppu.scy; break;
-        case 0x43: return *ppu.scx; break;
-        case 0x44: return *ppu.ly; break;
-        case 0x45: return *ppu.lyc; break;
-        case 0x46: return *ppu.dma; break;
-        case 0x47: return *ppu.bgp; break;
-        case 0x48: return *ppu.obp0; break;
-        case 0x49: return *ppu.obp1; break;
-        case 0x4A: return *ppu.wy; break;
-        case 0x4B: return *ppu.wx; break;
+        case 0x40: return ppu.lcdc; break;
+        case 0x41: return ppu.stat | STAT_UNUSED; break;
+        case 0x42: return ppu.scy; break;
+        case 0x43: return ppu.scx; break;
+        case 0x44: return ppu.ly; break;
+        case 0x45: return ppu.lyc; break;
+        case 0x46: return ppu.dma; break;
+        case 0x47: return ppu.bgp; break;
+        case 0x48: return ppu.obp0; break;
+        case 0x49: return ppu.obp1; break;
+        case 0x4A: return ppu.wy; break;
+        case 0x4B: return ppu.wx; break;
         default:
             printf("Bad PPU IO read");
             return 0;
@@ -253,18 +240,18 @@ uint8_t ppu_io_read(uint8_t addr) {
 
 void ppu_io_write(uint8_t addr, uint8_t data) {
     switch (addr) {
-        case 0x40: *ppu.lcdc = data; break;
-        case 0x41: *ppu.stat = data; break;
-        case 0x42: *ppu.scy = data; break;
-        case 0x43: *ppu.scx = data; break;
-        case 0x44: *ppu.ly = data; break;
-        case 0x45: *ppu.lyc = data; break;
+        case 0x40: ppu.lcdc = data; break;
+        case 0x41: ppu.stat = data; break;
+        case 0x42: ppu.scy = data; break;
+        case 0x43: ppu.scx = data; break;
+        case 0x44: ppu.ly = data; break;
+        case 0x45: ppu.lyc = data; break;
         case 0x46: oam_dma(data); break;
-        case 0x47: *ppu.bgp = data; break;
-        case 0x48: *ppu.obp0 = data; break;
-        case 0x49: *ppu.obp1 = data; break;
-        case 0x4A: *ppu.wy = data; break;
-        case 0x4B: *ppu.wx = data; break;
+        case 0x47: ppu.bgp = data; break;
+        case 0x48: ppu.obp0 = data; break;
+        case 0x49: ppu.obp1 = data; break;
+        case 0x4A: ppu.wy = data; break;
+        case 0x4B: ppu.wx = data; break;
         default:
             printf("Bad PPU IO write");
             break;

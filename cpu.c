@@ -360,8 +360,7 @@ uint8_t cpu_execute() {
     uint16_t result16;
 
     // Calculate if an interrupt should be handled
-    uint8_t *iflag = &mem.io_reg[0x0F];
-    bool interrupt = cpu.ime && (mem.ie & *iflag);
+    bool interrupt = cpu.ime && (mem.ie & mem.iflag);
 
     // Compute state mutation
     if (!interrupt && !cpu.halt) { // No interrupt triggered
@@ -1827,7 +1826,7 @@ uint8_t cpu_execute() {
                 exit(1);
         }
     } else if (interrupt) { // Interrupt triggered
-        DEBUG_PRINTF_CPU("INT 0b%08b ", *iflag);
+        DEBUG_PRINTF_CPU("INT 0b%08b ", mem.iflag);
 
         cpu_next.halt = 0;
         cpu_next.stop = 0;
@@ -1836,23 +1835,23 @@ uint8_t cpu_execute() {
 
         // Determine call address
         uint16_t iaddress;
-        if (*iflag & mem.ie & INT_VBLANK) {
+        if (mem.iflag & mem.ie & INT_VBLANK) {
             iaddress = 0x0040;
-            *iflag &= ~INT_VBLANK;
-        } else if (*iflag & mem.ie & INT_STAT) {
+            mem.iflag &= ~INT_VBLANK;
+        } else if (mem.iflag & mem.ie & INT_STAT) {
             iaddress = 0x0048;
-            *iflag &= ~INT_STAT;
-        } else if (*iflag & mem.ie & INT_TIMER) {
+            mem.iflag &= ~INT_STAT;
+        } else if (mem.iflag & mem.ie & INT_TIMER) {
             iaddress = 0x0050;
-            *iflag &= ~INT_TIMER;
-        } else if (*iflag & mem.ie & INT_SERIAL) {
+            mem.iflag &= ~INT_TIMER;
+        } else if (mem.iflag & mem.ie & INT_SERIAL) {
             iaddress = 0x0058;
-            *iflag &= ~INT_SERIAL;
-        } else if (*iflag & mem.ie & INT_JOYPAD) {
+            mem.iflag &= ~INT_SERIAL;
+        } else if (mem.iflag & mem.ie & INT_JOYPAD) {
             iaddress = 0x0060;
-            *iflag &= ~INT_JOYPAD;
+            mem.iflag &= ~INT_JOYPAD;
         } else {
-            printf("Unknown INT 0x%X\n", *iflag);
+            printf("Unknown INT 0x%X\n", mem.iflag);
             exit(1);
         }
 
@@ -1862,7 +1861,7 @@ uint8_t cpu_execute() {
     } else if (cpu.halt) {
         DEBUG_PRINTF_CPU("HALTED ");
         t = 4;
-        cpu_next.halt = !(bool)(*iflag & mem.ie); // TODO emulate HALT bug
+        cpu_next.halt = !(bool)(mem.iflag & mem.ie); // TODO emulate HALT bug
     } else if (cpu.stop) {
         DEBUG_PRINTF_CPU("STOPPED ");
         t = 0;

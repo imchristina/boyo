@@ -21,12 +21,14 @@ uint8_t mem_io_read(uint8_t addr) {
         return joypad_io_read(addr);
     } else if (addr <= 0x02) {
         return serial_io_read(addr);
-    } else if (addr >= 0x04 && addr <= 0x07) {
+    } else if ((addr >= 0x04) && (addr <= 0x07)) {
         return timer_io_read(addr);
-    } else if (addr > 0x40 && addr <= 0x4B) {
+    } else if (addr == 0x0F) {
+        return mem.iflag;
+    } else if ((addr >= 0x40) && (addr <= 0x4B)) {
         return ppu_io_read(addr);
     } else {
-        return mem.io_reg[addr-0x00];
+        return 0; //return mem.io_reg[addr-0x00];
     }
 }
 
@@ -37,15 +39,15 @@ void mem_io_write(uint8_t addr, uint8_t data) {
       joypad_io_write(addr, data);
     } else if (addr <= 0x02) {
         serial_io_write(addr, data);
-    } else if (addr >= 0x04 && addr <= 0x07) {
+    } else if ((addr >= 0x04) && (addr <= 0x07)) {
         timer_io_write(addr, data);
-    } else if (addr >= 0x40 && addr <= 0x4B) {
+    } else if (addr == 0x0F) {
+        mem.iflag = data;
+    } else if ((addr >= 0x40) && (addr <= 0x4B)) {
         ppu_io_write(addr, data);
-    } else if (addr == 0x50 && data) {
+    } else if ((addr == 0x50) && data) {
         DEBUG_PRINTF_MEM("BOOTROM DISABLED\n");
         mem.bootrom_disable = 1;
-    } else {
-        mem.io_reg[addr-0x00] = data;
     }
 }
 

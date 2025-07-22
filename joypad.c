@@ -17,7 +17,7 @@ void joypad_down(uint8_t mask) {
         joypad.dpad &= (mask & 0x0F);
     }
 
-    mem.io_reg[0x0F] |= INT_JOYPAD;
+    mem.iflag |= INT_JOYPAD;
 }
 
 void joypad_up(uint8_t mask) {

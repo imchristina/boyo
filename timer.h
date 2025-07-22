@@ -4,10 +4,10 @@
 #include <stdint.h>
 
 typedef struct {
-    uint8_t *div;
-    uint8_t *tima;
-    uint8_t *tma;
-    uint8_t *tac;
+    uint8_t div;
+    uint8_t tima;
+    uint8_t tma;
+    uint8_t tac;
 
     // Internal state
     uint16_t counter;

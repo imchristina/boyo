@@ -18,7 +18,7 @@ void serial_execute(uint8_t t) {
         if ((serial.sc & SC_TRANSFER_ENABLE) && (serial.sc & SC_CLOCK_SELECT)) {
             serial.counter += 1;
             if (serial.counter >= 512) { // 8192 Hz
-                mem.io_reg[0x0F] |= INT_SERIAL;
+                mem.iflag |= INT_SERIAL;
                 serial.sc &= ~SC_TRANSFER_ENABLE;
                 serial.counter = 0;
             }
