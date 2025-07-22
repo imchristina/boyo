@@ -58,6 +58,10 @@ static uint8_t tile_pixel(uint8_t x, uint8_t y, uint8_t tile_id, bool bg_win) {
     return (h << 1) + l;
 }
 
+static uint8_t map_palette(uint8_t palette, uint8_t index) {
+    return (palette >> (index * 2)) & 0b00000011;
+}
+
 static void draw() {
     uint8_t pixel_color = 0;
 
@@ -78,7 +82,8 @@ static void draw() {
         // Obtain tile index
         uint8_t tile_id = vram_read(((y/8) * 32 + (x/8)) + tile_map_addr);
 
-        pixel_color = tile_pixel(x % 8, y % 8, tile_id, 1);
+        uint8_t pixel_index = tile_pixel(x % 8, y % 8, tile_id, 1);
+        pixel_color = map_palette(ppu.bgp, pixel_index);
     }
 
     // Window
@@ -99,7 +104,8 @@ static void draw() {
             // Obtain tile index
             uint8_t tile_id = vram_read(((y/8) * 32 + (x/8)) + tile_map_addr);
 
-            pixel_color = tile_pixel(x % 8, y % 8, tile_id, 1);
+            uint8_t pixel_index = tile_pixel(x % 8, y % 8, tile_id, 1);
+            pixel_color = map_palette(ppu.bgp, pixel_index);
         }
     }
 
@@ -107,13 +113,14 @@ static void draw() {
     if (ppu.lcdc & LCDC_OBJ_ENABLE) {
         int x = ppu.lx + 8;
         int y = ppu.ly + 16;
+        int obj_y_size = (ppu.lcdc & LCDC_OBJ_SIZE) ? 16 : 8;
         for (int i = 0; i < 0xA0; i += 4) {
             int obj_y = mem.oam[i];
             int obj_x = mem.oam[i+1];
             int obj_tile = mem.oam[i+2];
             int obj_flags = mem.oam[i+3];
 
-            if (y >= obj_y && y < obj_y+8 && x >= obj_x && x < obj_x+8) {
+            if (y >= obj_y && y < obj_y+obj_y_size && x >= obj_x && x < obj_x+8) {
                 uint8_t tile_x = x - obj_x;
                 uint8_t tile_y = y - obj_y;
 
@@ -122,14 +129,16 @@ static void draw() {
                 }
 
                 if (obj_flags & OBJ_Y_FLIP) {
-                    tile_y = 7 - tile_y;
+                    tile_y = (obj_y_size - 1) - tile_y;
                 }
 
-                uint8_t obj_pixel_color = tile_pixel(tile_x, tile_y, obj_tile, 0);
+                uint8_t pixel_index = tile_pixel(tile_x, tile_y, obj_tile, 0);
 
-                // Pixel color ID 0 == transparent
-                if (obj_pixel_color != 0) {
-                    pixel_color = obj_pixel_color;
+                uint8_t palette = (obj_flags & OBJ_DMG_PALETTE) ? ppu.obp1 : ppu.obp0;
+
+                // Pixel index 0 == transparent
+                if (pixel_index != 0) {
+                    pixel_color = map_palette(palette, pixel_index);
                 }
             }
         }

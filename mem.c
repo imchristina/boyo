@@ -28,7 +28,7 @@ uint8_t mem_io_read(uint8_t addr) {
     } else if ((addr >= 0x40) && (addr <= 0x4B)) {
         return ppu_io_read(addr);
     } else {
-        return 0; //return mem.io_reg[addr-0x00];
+        return 0;
     }
 }
 
