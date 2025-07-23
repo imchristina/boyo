@@ -47,8 +47,8 @@ static uint8_t tile_pixel(uint8_t x, uint8_t y, uint8_t tile_id, bool bg_win) {
     }
 
     // Get the high/low bytes
-    uint8_t byte_h = vram_read(tile_address + (y * 2));
-    uint8_t byte_l = vram_read(tile_address + 1 + (y * 2));
+    uint8_t byte_l = vram_read(tile_address + (y * 2));
+    uint8_t byte_h = vram_read(tile_address + 1 + (y * 2));
 
     // Get each bit
     bool h = (byte_h >> (7 - x)) & 1;
@@ -88,7 +88,7 @@ static void draw() {
 
     // Window
     if ((ppu.lcdc & LCDC_BG_WIN_ENABLE) && (ppu.lcdc & LCDC_WIN_ENABLE)) {
-        if (ppu.lx >= ppu.wx && ppu.ly >= (ppu.wy - 7)) {
+        if (ppu.lx >= (ppu.wx - 7) && ppu.ly >= ppu.wy) {
             // Get window x/y values
             int x = ppu.lx - (ppu.wx - 7);
             int y = ppu.ly - ppu.wy;
