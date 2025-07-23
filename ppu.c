@@ -64,6 +64,7 @@ static uint8_t map_palette(uint8_t palette, uint8_t index) {
 
 static void draw() {
     uint8_t pixel_color = 0;
+    uint8_t pixel_index_bg_win = 0;
 
     // Background
     if (ppu.lcdc & LCDC_BG_WIN_ENABLE) {
@@ -72,18 +73,13 @@ static void draw() {
         int y = (ppu.ly + ppu.scy) % 256;
 
         // Get tile map area
-        uint16_t tile_map_addr;
-        if (ppu.lcdc & LCDC_BG_TILEMAP) {
-            tile_map_addr = 0x9C00;
-        } else {
-            tile_map_addr = 0x9800;
-        }
+        uint16_t tile_map_addr = (ppu.lcdc & LCDC_BG_TILEMAP) ? 0x9C00 : 0x9800;
 
         // Obtain tile index
         uint8_t tile_id = vram_read(((y/8) * 32 + (x/8)) + tile_map_addr);
 
-        uint8_t pixel_index = tile_pixel(x % 8, y % 8, tile_id, 1);
-        pixel_color = map_palette(ppu.bgp, pixel_index);
+        pixel_index_bg_win = tile_pixel(x % 8, y % 8, tile_id, 1);
+        pixel_color = map_palette(ppu.bgp, pixel_index_bg_win);
     }
 
     // Window
@@ -94,18 +90,13 @@ static void draw() {
             int y = ppu.ly - ppu.wy;
 
             // Get tile map area
-            uint16_t tile_map_addr;
-            if (ppu.lcdc & LCDC_WIN_TILEMAP) {
-                tile_map_addr = 0x9C00;
-            } else {
-                tile_map_addr = 0x9800;
-            }
+            uint16_t tile_map_addr = (ppu.lcdc & LCDC_WIN_TILEMAP) ? 0x9C00 : 0x9800;
 
             // Obtain tile index
             uint8_t tile_id = vram_read(((y/8) * 32 + (x/8)) + tile_map_addr);
 
-            uint8_t pixel_index = tile_pixel(x % 8, y % 8, tile_id, 1);
-            pixel_color = map_palette(ppu.bgp, pixel_index);
+            pixel_index_bg_win = tile_pixel(x % 8, y % 8, tile_id, 1);
+            pixel_color = map_palette(ppu.bgp, pixel_index_bg_win);
         }
     }
 
@@ -120,7 +111,12 @@ static void draw() {
             int obj_tile = mem.oam[i+2];
             int obj_flags = mem.oam[i+3];
 
-            if (y >= obj_y && y < obj_y+obj_y_size && x >= obj_x && x < obj_x+8) {
+            // Object pixel is not drawn if priority is enabled and BG/WIN index is 1-3
+            bool priority_disable = (obj_flags & OBJ_PRIORITY) && (pixel_index_bg_win > 0);
+
+            bool object_in_pos = y >= obj_y && y < obj_y+obj_y_size && x >= obj_x && x < obj_x+8;
+
+            if (!priority_disable && object_in_pos) {
                 uint8_t tile_x = x - obj_x;
                 uint8_t tile_y = y - obj_y;
 
