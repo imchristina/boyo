@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <signal.h>
-#include <SDL3/SDL.h>
+#include <SDL2/SDL.h>
 
 #include "main.h"
 #include "mem.h"
@@ -24,15 +24,15 @@ int main(int argc, char *argv[]) {
     // SDL stuff
     SDL_Init(SDL_INIT_VIDEO);
     signal(SIGINT, SIG_DFL); // Return ctrl-c to normal
-    SDL_Window *win = SDL_CreateWindow("Boyo", 160, 144, 0);
+    SDL_Window *win = SDL_CreateWindow("Boyo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160, 144, 0);
     SDL_Surface *screen = SDL_GetWindowSurface(win);
 
     // Get colors here because MapRGB is slow
     uint32_t sdl_col[4];
-    sdl_col[0] = SDL_MapSurfaceRGB(screen, 255, 255, 255);
-    sdl_col[1] = SDL_MapSurfaceRGB(screen, 170, 170, 170);
-    sdl_col[2] = SDL_MapSurfaceRGB(screen, 85, 85, 85);
-    sdl_col[3] = SDL_MapSurfaceRGB(screen, 0, 0, 0);
+    sdl_col[0] = SDL_MapRGB(screen->format, 255, 255, 255);
+    sdl_col[1] = SDL_MapRGB(screen->format, 170, 170, 170);
+    sdl_col[2] = SDL_MapRGB(screen->format, 85, 85, 85);
+    sdl_col[3] = SDL_MapRGB(screen->format, 0, 0, 0);
 
     // Open boot/game roms
     mem_open_bootrom("dmg_boot.bin");
@@ -86,30 +86,30 @@ int main(int argc, char *argv[]) {
 
             while (SDL_PollEvent(&e)) {
                 switch (e.type) {
-                    case SDL_EVENT_QUIT: emu_running = 0; break;
-                    case SDL_EVENT_KEY_DOWN:
-                        switch (e.key.key) {
-                            case SDLK_L: joypad_down(JOYPAD_BUTTON_A); break;
-                            case SDLK_K: joypad_down(JOYPAD_BUTTON_B); break;
-                            case SDLK_H: joypad_down(JOYPAD_BUTTON_START); break;
-                            case SDLK_G: joypad_down(JOYPAD_BUTTON_SELECT); break;
-                            case SDLK_W: joypad_down(JOYPAD_DPAD_UP); break;
-                            case SDLK_S: joypad_down(JOYPAD_DPAD_DOWN); break;
-                            case SDLK_A: joypad_down(JOYPAD_DPAD_LEFT); break;
-                            case SDLK_D: joypad_down(JOYPAD_DPAD_RIGHT); break;
+                    case SDL_QUIT: emu_running = 0; break;
+                    case SDL_KEYDOWN:
+                        switch (e.key.keysym.sym) {
+                            case SDLK_l: joypad_down(JOYPAD_BUTTON_A); break;
+                            case SDLK_k: joypad_down(JOYPAD_BUTTON_B); break;
+                            case SDLK_h: joypad_down(JOYPAD_BUTTON_START); break;
+                            case SDLK_g: joypad_down(JOYPAD_BUTTON_SELECT); break;
+                            case SDLK_w: joypad_down(JOYPAD_DPAD_UP); break;
+                            case SDLK_s: joypad_down(JOYPAD_DPAD_DOWN); break;
+                            case SDLK_a: joypad_down(JOYPAD_DPAD_LEFT); break;
+                            case SDLK_d: joypad_down(JOYPAD_DPAD_RIGHT); break;
                             default: break;
                         }
                         break;
-                    case SDL_EVENT_KEY_UP:
-                        switch (e.key.key) {
-                            case SDLK_L: joypad_up(JOYPAD_BUTTON_A); break;
-                            case SDLK_K: joypad_up(JOYPAD_BUTTON_B); break;
-                            case SDLK_H: joypad_up(JOYPAD_BUTTON_START); break;
-                            case SDLK_G: joypad_up(JOYPAD_BUTTON_SELECT); break;
-                            case SDLK_W: joypad_up(JOYPAD_DPAD_UP); break;
-                            case SDLK_S: joypad_up(JOYPAD_DPAD_DOWN); break;
-                            case SDLK_A: joypad_up(JOYPAD_DPAD_LEFT); break;
-                            case SDLK_D: joypad_up(JOYPAD_DPAD_RIGHT); break;
+                    case SDL_KEYUP:
+                        switch (e.key.keysym.sym) {
+                            case SDLK_l: joypad_up(JOYPAD_BUTTON_A); break;
+                            case SDLK_k: joypad_up(JOYPAD_BUTTON_B); break;
+                            case SDLK_h: joypad_up(JOYPAD_BUTTON_START); break;
+                            case SDLK_g: joypad_up(JOYPAD_BUTTON_SELECT); break;
+                            case SDLK_w: joypad_up(JOYPAD_DPAD_UP); break;
+                            case SDLK_s: joypad_up(JOYPAD_DPAD_DOWN); break;
+                            case SDLK_a: joypad_up(JOYPAD_DPAD_LEFT); break;
+                            case SDLK_d: joypad_up(JOYPAD_DPAD_RIGHT); break;
                             default: break;
                         }
                         break;

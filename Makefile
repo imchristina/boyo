@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -g $(shell pkg-config --cflags --libs sdl3)
+CFLAGS = -Wall -Wextra -std=c23 -g $(shell pkg-config --cflags --libs sdl2)
 
 # Target executable and source files
 TARGET = gbemu
