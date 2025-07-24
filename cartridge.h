@@ -19,6 +19,8 @@ typedef struct {
 extern gb_cartridge_t cartridge;
 
 void cartridge_open_rom(char *path);
+void cartridge_open_ram(char *path);
+void cartridge_save_ram(char *path);
 uint8_t cartridge_read(uint16_t addr);
 void cartridge_write(uint16_t addr, uint8_t data);
 

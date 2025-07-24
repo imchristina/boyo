@@ -25,6 +25,41 @@ void cartridge_open_rom(char *path) {
     cartridge.ram_size = cartridge.rom[0x149];
 }
 
+int get_sav_size() {
+    int sav_size;
+    switch (cartridge.ram_size) {
+        case 0x02: sav_size = 0x2000; break;
+        case 0x03: sav_size = 0x8000; break;
+        default: sav_size = 0; break;
+    }
+    return sav_size;
+}
+
+void cartridge_open_ram(char *path) {
+    int sav_size = get_sav_size();
+    if (sav_size > 0) {
+        FILE *save = fopen(path, "rb");
+        if (save) {
+            fread(cartridge.ram, 1, sav_size, save);
+            fclose(save);
+        }
+    }
+}
+
+void cartridge_save_ram(char *path) {
+    int sav_size = get_sav_size();
+    if (sav_size > 0) {
+        FILE *save = fopen(path, "wb");
+        if (!save) {
+            printf("Could not open cartridge save %s\n", path);
+            exit(1);
+        }
+
+        fwrite(cartridge.ram, 1, sav_size, save);
+        fclose(save);
+    }
+}
+
 uint8_t cartridge_read(uint16_t addr) {
     switch (cartridge.type) {
         case 0x00: // ROM ONLY

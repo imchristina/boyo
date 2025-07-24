@@ -34,9 +34,23 @@ int main(int argc, char *argv[]) {
     sdl_col[2] = SDL_MapRGB(screen->format, 85, 85, 85);
     sdl_col[3] = SDL_MapRGB(screen->format, 0, 0, 0);
 
+    // Get save path
+    char save_path[256];
+    int i = 0;
+    while (argv[1][i] && i < 252) {
+        save_path[i] = argv[1][i];
+        i++;
+    }
+    save_path[i++] = '.';
+    save_path[i++] = 's';
+    save_path[i++] = 'a';
+    save_path[i++] = 'v';
+    save_path[i++] = 0;
+
     // Open boot/game roms
     mem_open_bootrom("dmg_boot.bin");
     cartridge_open_rom(argv[1]);
+    cartridge_open_ram(save_path);
 
     // Get the game title out of the cartridge header
     printf("%s %s\n","Cartridge Header Title:", cartridge.title);
@@ -110,6 +124,7 @@ int main(int argc, char *argv[]) {
                             case SDLK_s: joypad_up(JOYPAD_DPAD_DOWN); break;
                             case SDLK_a: joypad_up(JOYPAD_DPAD_LEFT); break;
                             case SDLK_d: joypad_up(JOYPAD_DPAD_RIGHT); break;
+                            case SDLK_ESCAPE: emu_running = 0;
                             default: break;
                         }
                         break;
@@ -117,9 +132,11 @@ int main(int argc, char *argv[]) {
                 }
             }
         }
-
-
     }
+
+    // Append .sav to rom path and save cartridge ram
+    printf("Saving cartridge ram\n");
+    cartridge_save_ram(save_path);
 
     SDL_DestroyWindow(win);
     SDL_Quit();
