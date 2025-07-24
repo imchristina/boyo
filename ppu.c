@@ -111,6 +111,11 @@ static void draw() {
             int obj_tile = mem.oam[i+2];
             int obj_flags = mem.oam[i+3];
 
+            // Bit 0 of tile index is ignored for 8x16 objects
+            if (obj_y_size == 16) {
+                obj_tile &= 0b11111110;
+            }
+
             // Object pixel is not drawn if priority is enabled and BG/WIN index is 1-3
             bool priority_disable = (obj_flags & OBJ_PRIORITY) && (pixel_index_bg_win > 0);
 
@@ -155,12 +160,12 @@ bool ppu_execute(uint8_t t) {
 
             // Set registers
             ppu.ly = dot_y;
-            ppu.stat = (ppu.stat & ~STAT_PPU_MODE) | (ppu.mode & 0x03); // PPU mode
-            ppu.stat = (ppu.stat & ~STAT_LYC_LY) | ((uint8_t)(ppu.lyc == ppu.ly) << 3); // LYC == LY
+            ppu.stat = (ppu.stat & ~STAT_PPU_MODE) | (ppu.mode & STAT_PPU_MODE); // PPU mode
+            ppu.stat = (ppu.stat & ~STAT_LYC_LY) | ((ppu.lyc == ppu.ly) ? STAT_LYC_LY : 0); // LYC == LY
 
             // STAT line is common between all sources and only triggers on high transition
             // Defer final value until all sources are calculated
-            bool stat_int_trans = (ppu.lyc == ppu.ly) & ppu.stat & STAT_LYC_INT;
+            bool stat_int_trans = (ppu.lyc == ppu.ly) && (ppu.stat & STAT_LYC_INT);
 
             // State transitions/timing
             if (dot_y < 144) {
