@@ -3,7 +3,6 @@
 #include <signal.h>
 #include <SDL2/SDL.h>
 
-#include "main.h"
 #include "mem.h"
 #include "cpu.h"
 #include "ppu.h"
@@ -15,6 +14,11 @@
 
 bool emu_running = 1;
 
+void emu_halt(int sig) {
+    printf("Emulation halting: %i\n", sig);
+    emu_running = 0;
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("Usage: %s rom.gb\n", argv[0]);
@@ -23,9 +27,12 @@ int main(int argc, char *argv[]) {
 
     // SDL stuff
     SDL_Init(SDL_INIT_VIDEO);
-    signal(SIGINT, SIG_DFL); // Return ctrl-c to normal
     SDL_Window *win = SDL_CreateWindow("Boyo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160, 144, 0);
     SDL_Surface *screen = SDL_GetWindowSurface(win);
+
+    // Attach termination signals to handler
+    signal(SIGINT, emu_halt);
+    signal(SIGTERM, emu_halt);
 
     // Get colors here because MapRGB is slow
     uint32_t sdl_col[4];
@@ -141,9 +148,4 @@ int main(int argc, char *argv[]) {
     SDL_DestroyWindow(win);
     SDL_Quit();
     return 0;
-}
-
-void emu_halt() {
-    printf("Emulation halting, execution beyond this point invalid\n");
-    emu_running = 0;
 }
