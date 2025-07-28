@@ -10,6 +10,7 @@
 #include "joypad.h"
 #include "serial.h"
 #include "cartridge.h"
+#include "apu.h"
 #include "log.h"
 
 bool emu_running = 1;
@@ -26,9 +27,23 @@ int main(int argc, char *argv[]) {
     }
 
     // SDL stuff
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     SDL_Window *win = SDL_CreateWindow("Boyo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160, 144, 0);
     SDL_Surface *screen = SDL_GetWindowSurface(win);
+
+    // SDL audio
+    SDL_AudioSpec want = {0}, have;
+    want.freq = APU_SAMPLE_RATE;
+    want.format = AUDIO_S16SYS;
+    want.channels = 2;
+    want.samples = APU_BUFFER_SIZE;
+    want.callback = NULL;
+    SDL_AudioDeviceID dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+    if (!dev) {
+        fprintf(stderr, "Failed to open audio: %s\n", SDL_GetError());
+        return 1;
+    }
+    SDL_PauseAudioDevice(dev, 0);
 
     // Attach termination signals to handler
     signal(SIGINT, emu_halt);
@@ -74,14 +89,24 @@ int main(int argc, char *argv[]) {
     while (emu_running) {
         uint8_t t = 0; // Time to next instruction
         bool new_frame = false;
+        bool new_buffer = false;
 
         // Execute instruction/fetch next
         t = cpu_execute();
         cpu_writeback();
 
         new_frame = ppu_execute(t);
+        new_buffer = apu_execute(t);
         timer_execute(t);
         serial_execute(t);
+
+        bool underrun = SDL_GetQueuedAudioSize(dev) < (APU_BUFFER_SIZE * sizeof(int16_t));
+        if (underrun) { printf("UNDERRUN\n"); }
+        if (new_buffer || underrun) {
+            if (SDL_QueueAudio(dev, apu.buffer, APU_BUFFER_SIZE * sizeof(int16_t) * 2) < 0) {
+                printf("SDL_QueueAudio error: %s\n", SDL_GetError());
+            }
+        }
 
         if (new_frame) {
             DEBUG_PRINTF("NEW FRAME\n");
@@ -146,6 +171,7 @@ int main(int argc, char *argv[]) {
     cartridge_save_ram(save_path);
 
     SDL_DestroyWindow(win);
+    SDL_CloseAudioDevice(dev);
     SDL_Quit();
     return 0;
 }
