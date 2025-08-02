@@ -1,3 +1,4 @@
 gbemu
 *.gb
 *.bin
+obj/
