@@ -3,10 +3,10 @@
 #include <signal.h>
 #include <SDL2/SDL.h>
 
+#include "emu.h"
 #include "mem.h"
 #include "cpu.h"
 #include "ppu.h"
-#include "timer.h"
 #include "joypad.h"
 #include "serial.h"
 #include "cartridge.h"
@@ -87,18 +87,13 @@ int main(int argc, char *argv[]) {
     SDL_Event e;
     uint32_t sdl_fb[160*144*4];
     while (emu_running) {
-        uint8_t t = 0; // Time to next instruction
         bool new_frame = false;
         bool new_buffer = false;
 
-        // Execute instruction/fetch next
-        t = cpu_execute();
-        cpu_writeback();
+        int emu_event = emu_execute();
 
-        new_frame = ppu_execute(t);
-        new_buffer = apu_execute(t);
-        timer_execute(t);
-        serial_execute(t);
+        new_frame = emu_event & EMU_EVENT_FRAME;
+        new_buffer = emu_event & EMU_EVENT_AUDIO;
 
         bool underrun = SDL_GetQueuedAudioSize(dev) < (APU_BUFFER_SIZE * sizeof(int16_t));
         if (underrun) { printf("UNDERRUN\n"); }
@@ -163,6 +158,8 @@ int main(int argc, char *argv[]) {
                     default: break;
                 }
             }
+
+            new_frame = false;
         }
     }
 
