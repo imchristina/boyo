@@ -110,7 +110,7 @@ bool apu_execute(uint8_t t) {
             }
 
             // Mix
-            int timer_target = 1048576 / APU_SAMPLE_RATE;
+            float timer_target = (float)1048576 / (float)APU_SAMPLE_RATE;
             if (apu.buffer_index_timer > timer_target) {
                 int16_t *left = &apu.buffer[apu.buffer_index];
                 int16_t *right = &apu.buffer[apu.buffer_index+1];
@@ -121,7 +121,7 @@ bool apu_execute(uint8_t t) {
                 *left += (apu.panning & APU_PAN_LEFT_CH1) ? apu.ch1.sample : 0;
                 *right += (apu.panning & APU_PAN_RIGHT_CH1) ? apu.ch1.sample : 0;
 
-                apu.buffer_index_timer = 0;
+                apu.buffer_index_timer -= timer_target;
                 apu.buffer_index += 2;
                 if (apu.buffer_index >= APU_BUFFER_SIZE*2) {
                     apu.buffer_index = 0;

@@ -34,7 +34,7 @@ int emu_execute() {
     }
 
     if (new_audio) {
-        if (emu.audio_callback != 0) { emu.audio_callback(); }
+        if (emu.audio_callback != 0) { emu.audio_callback(apu.buffer, APU_BUFFER_SIZE*2); }
         result |= EMU_EVENT_AUDIO;
     }
 

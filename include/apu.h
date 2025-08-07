@@ -60,7 +60,7 @@ typedef struct {
 
     int16_t buffer[APU_BUFFER_SIZE*2];
     int buffer_index;
-    int buffer_index_timer;
+    float buffer_index_timer;
 
     int div_apu;
     bool div_clock_last;

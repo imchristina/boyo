@@ -1,32 +1,59 @@
+# User-selectable platform (default = sdl2)
+PLATFORM ?= sdl2
+
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -Iinclude -std=c23 -g $(shell pkg-config --cflags --libs sdl2)
+CFLAGS_COMMON = -Wall -Wextra -Iinclude -std=c23 -g
+
+# Platform-specific flags
+ifeq ($(PLATFORM), sdl2)
+    PLATFORM_CFLAGS = $(shell pkg-config --cflags sdl2)
+    PLATFORM_LDFLAGS = $(shell pkg-config --libs sdl2)
+else
+    $(error Unknown PLATFORM '$(PLATFORM)'. Supported: sdl2)
+endif
+
+CFLAGS = $(CFLAGS_COMMON) $(PLATFORM_CFLAGS)
 
 # Directories
 SRC_DIR = src
 OBJ_DIR = obj
 BIN = gbemu
 
-# Source and object files
+# Platform directories
+SRC_DIR_PLATFORM = platform/$(PLATFORM)
+OBJ_DIR_PLATFORM = $(OBJ_DIR)/$(PLATFORM)
+
+# Source files
 SRCS = $(wildcard $(SRC_DIR)/*.c)
+SRCS_PLATFORM = $(wildcard $(SRC_DIR_PLATFORM)/*.c)
+
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
+OBJS_PLATFORM = $(patsubst $(SRC_DIR_PLATFORM)/%.c, $(OBJ_DIR_PLATFORM)/%.o, $(SRCS_PLATFORM))
 
 # Default target
 all: $(BIN)
 
 # Link the executable
-$(BIN): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+$(BIN): $(OBJS) $(OBJS_PLATFORM)
+	$(CC) -o $@ $^ $(PLATFORM_LDFLAGS)
 
-# Compile source files into object files
+# Compile main source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Create obj directory if needed
+# Compile platform source files
+$(OBJ_DIR_PLATFORM)/%.o: $(SRC_DIR_PLATFORM)/%.c | $(OBJ_DIR_PLATFORM)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Create output directories
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
-# Clean up
+$(OBJ_DIR_PLATFORM):
+	mkdir -p $(OBJ_DIR_PLATFORM)
+
+# Clean target
 clean:
 	rm -rf $(OBJ_DIR) $(BIN)
 

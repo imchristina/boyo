@@ -95,9 +95,11 @@ int main(int argc, char *argv[]) {
         new_frame = emu_event & EMU_EVENT_FRAME;
         new_buffer = emu_event & EMU_EVENT_AUDIO;
 
-        bool underrun = SDL_GetQueuedAudioSize(dev) < (APU_BUFFER_SIZE * sizeof(int16_t));
-        if (underrun) { printf("UNDERRUN\n"); }
-        if (new_buffer || underrun) {
+        bool underrun = SDL_GetQueuedAudioSize(dev) < (APU_BUFFER_SIZE * sizeof(int16_t) / 2);
+        bool overrun = SDL_GetQueuedAudioSize(dev) > (APU_BUFFER_SIZE * sizeof(int16_t) * 8);
+        if (underrun) { printf("UNDERRUN %d\n", SDL_GetQueuedAudioSize(dev)); }
+        if (overrun) { printf("OVERRUN %d\n", SDL_GetQueuedAudioSize(dev)); }
+        if (new_buffer && !overrun) {
             if (SDL_QueueAudio(dev, apu.buffer, APU_BUFFER_SIZE * sizeof(int16_t) * 2) < 0) {
                 printf("SDL_QueueAudio error: %s\n", SDL_GetError());
             }
