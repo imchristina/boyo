@@ -3,17 +3,15 @@ PLATFORM ?= sdl2
 
 # Compiler and flags
 CC = gcc
-CFLAGS_COMMON = -Wall -Wextra -Iinclude -std=c23 -g
+CFLAGS = -Wall -Wextra -Iinclude -std=c23 -g
 
 # Platform-specific flags
 ifeq ($(PLATFORM), sdl2)
-    PLATFORM_CFLAGS = $(shell pkg-config --cflags sdl2)
-    PLATFORM_LDFLAGS = $(shell pkg-config --libs sdl2)
+    CFLAGS_PLATFORM = $(CFLAGS) $(shell pkg-config --cflags sdl2)
+    LDFLAGS_PLATFORM = $(shell pkg-config --libs sdl2)
 else
     $(error Unknown PLATFORM '$(PLATFORM)'. Supported: sdl2)
 endif
-
-CFLAGS = $(CFLAGS_COMMON) $(PLATFORM_CFLAGS)
 
 # Directories
 SRC_DIR = src
@@ -36,7 +34,7 @@ all: $(BIN)
 
 # Link the executable
 $(BIN): $(OBJS) $(OBJS_PLATFORM)
-	$(CC) -o $@ $^ $(PLATFORM_LDFLAGS)
+	$(CC) -o $@ $^ $(LDFLAGS_PLATFORM)
 
 # Compile main source files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
@@ -44,7 +42,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 
 # Compile platform source files
 $(OBJ_DIR_PLATFORM)/%.o: $(SRC_DIR_PLATFORM)/%.c | $(OBJ_DIR_PLATFORM)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS_PLATFORM) -c $< -o $@
 
 # Create output directories
 $(OBJ_DIR):

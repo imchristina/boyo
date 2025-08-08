@@ -8,16 +8,107 @@
 #include "cpu.h"
 #include "ppu.h"
 #include "joypad.h"
-#include "serial.h"
 #include "cartridge.h"
 #include "apu.h"
 #include "log.h"
 
-bool emu_running = 1;
+SDL_Window *win;
+SDL_Surface *surface;
+SDL_AudioSpec audiospec_want;
+SDL_AudioSpec audiospec_have;
+SDL_AudioDeviceID audio_dev;
+
+uint32_t sdl_col[4];
+
+uint64_t perf_count_freq = 0;
+uint64_t perf_count_start = 0;
+const float target_frametime = 16.666f;
 
 void emu_halt(int sig) {
     printf("Emulation halting: %i\n", sig);
-    emu_running = 0;
+    emu.running = 0;
+}
+
+void process_events() {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+        switch (e.type) {
+            case SDL_QUIT: emu.running = 0; break;
+            case SDL_KEYDOWN:
+                switch (e.key.keysym.sym) {
+                    case SDLK_l: joypad_down(JOYPAD_BUTTON_A); break;
+                    case SDLK_k: joypad_down(JOYPAD_BUTTON_B); break;
+                    case SDLK_h: joypad_down(JOYPAD_BUTTON_START); break;
+                    case SDLK_g: joypad_down(JOYPAD_BUTTON_SELECT); break;
+                    case SDLK_w: joypad_down(JOYPAD_DPAD_UP); break;
+                    case SDLK_s: joypad_down(JOYPAD_DPAD_DOWN); break;
+                    case SDLK_a: joypad_down(JOYPAD_DPAD_LEFT); break;
+                    case SDLK_d: joypad_down(JOYPAD_DPAD_RIGHT); break;
+                    default: break;
+                }
+                break;
+            case SDL_KEYUP:
+                switch (e.key.keysym.sym) {
+                    case SDLK_l: joypad_up(JOYPAD_BUTTON_A); break;
+                    case SDLK_k: joypad_up(JOYPAD_BUTTON_B); break;
+                    case SDLK_h: joypad_up(JOYPAD_BUTTON_START); break;
+                    case SDLK_g: joypad_up(JOYPAD_BUTTON_SELECT); break;
+                    case SDLK_w: joypad_up(JOYPAD_DPAD_UP); break;
+                    case SDLK_s: joypad_up(JOYPAD_DPAD_DOWN); break;
+                    case SDLK_a: joypad_up(JOYPAD_DPAD_LEFT); break;
+                    case SDLK_d: joypad_up(JOYPAD_DPAD_RIGHT); break;
+                    case SDLK_ESCAPE: emu.running = 0;
+                    default: break;
+                }
+                break;
+            default: break;
+        }
+    }
+}
+
+void frame_callback(uint8_t *buffer) {
+    DEBUG_PRINTF("NEW FRAME\n");
+
+    static uint32_t sdl_fb[160*144*4];
+
+    // Convert GB color to SDL 8-bit
+    for (int i = 0; i < 160*144; i++) {
+        sdl_fb[i] = sdl_col[buffer[i]];
+    }
+
+    memcpy(surface->pixels, sdl_fb, 160*144*4);
+
+    SDL_UpdateWindowSurface(win);
+
+    // Limit framerate
+    uint64_t perf_count_end = SDL_GetPerformanceCounter();
+    float elapsed = (float)((perf_count_end - perf_count_start) * 1000) / perf_count_freq;
+
+    if (elapsed < target_frametime) {
+        SDL_Delay((uint32_t)(target_frametime - elapsed));
+    }
+
+    perf_count_start = SDL_GetPerformanceCounter();
+
+    process_events();
+}
+
+void audio_callback(int16_t *buffer, int len) {
+    bool underrun = SDL_GetQueuedAudioSize(audio_dev) < (len * sizeof(int16_t));
+    bool overrun = SDL_GetQueuedAudioSize(audio_dev) > (len * sizeof(int16_t) * 2);
+
+    if (underrun) { printf("UNDERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
+    if (overrun) { printf("OVERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
+
+    if (!overrun) {
+        if (SDL_QueueAudio(audio_dev, buffer, len * sizeof(int16_t)) < 0) {
+            printf("SDL_QueueAudio error: %s\n", SDL_GetError());
+        }
+    }
+
+    if (underrun) {
+        emu_run_to(EMU_EVENT_AUDIO);
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -26,35 +117,33 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // SDL stuff
+    // Initialize SDL/Window/Surface
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-    SDL_Window *win = SDL_CreateWindow("Boyo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160, 144, 0);
-    SDL_Surface *screen = SDL_GetWindowSurface(win);
+    win = SDL_CreateWindow("Boyo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160, 144, 0);
+    surface = SDL_GetWindowSurface(win);
 
-    // SDL audio
-    SDL_AudioSpec want = {0}, have;
-    want.freq = APU_SAMPLE_RATE;
-    want.format = AUDIO_S16SYS;
-    want.channels = 2;
-    want.samples = APU_BUFFER_SIZE;
-    want.callback = NULL;
-    SDL_AudioDeviceID dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
-    if (!dev) {
+    // Initialize SDL audio
+    audiospec_want.freq = APU_SAMPLE_RATE;
+    audiospec_want.format = AUDIO_S16SYS;
+    audiospec_want.channels = 2;
+    audiospec_want.samples = APU_BUFFER_SIZE;
+    audiospec_want.callback = NULL;
+    audio_dev = SDL_OpenAudioDevice(NULL, 0, &audiospec_want, &audiospec_have, 0);
+    if (!audio_dev) {
         fprintf(stderr, "Failed to open audio: %s\n", SDL_GetError());
         return 1;
     }
-    SDL_PauseAudioDevice(dev, 0);
+    SDL_PauseAudioDevice(audio_dev, 0);
 
     // Attach termination signals to handler
     signal(SIGINT, emu_halt);
     signal(SIGTERM, emu_halt);
 
-    // Get colors here because MapRGB is slow
-    uint32_t sdl_col[4];
-    sdl_col[0] = SDL_MapRGB(screen->format, 255, 255, 255);
-    sdl_col[1] = SDL_MapRGB(screen->format, 170, 170, 170);
-    sdl_col[2] = SDL_MapRGB(screen->format, 85, 85, 85);
-    sdl_col[3] = SDL_MapRGB(screen->format, 0, 0, 0);
+    // Initialize the SDL color palette
+    sdl_col[0] = SDL_MapRGB(surface->format, 255, 255, 255);
+    sdl_col[1] = SDL_MapRGB(surface->format, 170, 170, 170);
+    sdl_col[2] = SDL_MapRGB(surface->format, 85, 85, 85);
+    sdl_col[3] = SDL_MapRGB(surface->format, 0, 0, 0);
 
     // Get save path
     char save_path[256];
@@ -77,92 +166,19 @@ int main(int argc, char *argv[]) {
     // Get the game title out of the cartridge header
     printf("%s %s\n","Cartridge Header Title:", cartridge.title);
 
-    cpu_reset();
+    // Initialize the framerate limiter
+    perf_count_freq = SDL_GetPerformanceFrequency();
+    perf_count_start = SDL_GetPerformanceCounter();
 
-    uint64_t perf_count_freq = SDL_GetPerformanceFrequency();
-    uint64_t perf_count_start = SDL_GetPerformanceCounter();
-    float target_frametime = 16.666f;
+    // Attach callbacks
+    emu.frame_callback = frame_callback;
+    emu.audio_callback = audio_callback;
+
+    emu.running = true;
 
     // Main loop
-    SDL_Event e;
-    uint32_t sdl_fb[160*144*4];
-    while (emu_running) {
-        bool new_frame = false;
-        bool new_buffer = false;
-
-        int emu_event = emu_execute();
-
-        new_frame = emu_event & EMU_EVENT_FRAME;
-        new_buffer = emu_event & EMU_EVENT_AUDIO;
-
-        bool underrun = SDL_GetQueuedAudioSize(dev) < (APU_BUFFER_SIZE * sizeof(int16_t) / 2);
-        bool overrun = SDL_GetQueuedAudioSize(dev) > (APU_BUFFER_SIZE * sizeof(int16_t) * 8);
-        if (underrun) { printf("UNDERRUN %d\n", SDL_GetQueuedAudioSize(dev)); }
-        if (overrun) { printf("OVERRUN %d\n", SDL_GetQueuedAudioSize(dev)); }
-        if (new_buffer && !overrun) {
-            if (SDL_QueueAudio(dev, apu.buffer, APU_BUFFER_SIZE * sizeof(int16_t) * 2) < 0) {
-                printf("SDL_QueueAudio error: %s\n", SDL_GetError());
-            }
-        }
-
-        if (new_frame) {
-            DEBUG_PRINTF("NEW FRAME\n");
-
-            // Convert GB color to SDL 8-bit
-            for (int i = 0; i < 160*144; i++) {
-                sdl_fb[i] = sdl_col[ppu.fb[i]];
-            }
-
-            memcpy(screen->pixels, sdl_fb, 160*144*4);
-
-            SDL_UpdateWindowSurface(win);
-
-            // Limit framerate
-            uint64_t perf_count_end = SDL_GetPerformanceCounter();
-            float elapsed = (float)((perf_count_end - perf_count_start) * 1000) / perf_count_freq;
-
-            if (elapsed < target_frametime) {
-                SDL_Delay((uint32_t)(target_frametime - elapsed));
-            }
-
-            perf_count_start = SDL_GetPerformanceCounter();
-
-            while (SDL_PollEvent(&e)) {
-                switch (e.type) {
-                    case SDL_QUIT: emu_running = 0; break;
-                    case SDL_KEYDOWN:
-                        switch (e.key.keysym.sym) {
-                            case SDLK_l: joypad_down(JOYPAD_BUTTON_A); break;
-                            case SDLK_k: joypad_down(JOYPAD_BUTTON_B); break;
-                            case SDLK_h: joypad_down(JOYPAD_BUTTON_START); break;
-                            case SDLK_g: joypad_down(JOYPAD_BUTTON_SELECT); break;
-                            case SDLK_w: joypad_down(JOYPAD_DPAD_UP); break;
-                            case SDLK_s: joypad_down(JOYPAD_DPAD_DOWN); break;
-                            case SDLK_a: joypad_down(JOYPAD_DPAD_LEFT); break;
-                            case SDLK_d: joypad_down(JOYPAD_DPAD_RIGHT); break;
-                            default: break;
-                        }
-                        break;
-                    case SDL_KEYUP:
-                        switch (e.key.keysym.sym) {
-                            case SDLK_l: joypad_up(JOYPAD_BUTTON_A); break;
-                            case SDLK_k: joypad_up(JOYPAD_BUTTON_B); break;
-                            case SDLK_h: joypad_up(JOYPAD_BUTTON_START); break;
-                            case SDLK_g: joypad_up(JOYPAD_BUTTON_SELECT); break;
-                            case SDLK_w: joypad_up(JOYPAD_DPAD_UP); break;
-                            case SDLK_s: joypad_up(JOYPAD_DPAD_DOWN); break;
-                            case SDLK_a: joypad_up(JOYPAD_DPAD_LEFT); break;
-                            case SDLK_d: joypad_up(JOYPAD_DPAD_RIGHT); break;
-                            case SDLK_ESCAPE: emu_running = 0;
-                            default: break;
-                        }
-                        break;
-                    default: break;
-                }
-            }
-
-            new_frame = false;
-        }
+    while (emu.running) {
+        emu_run_to(EMU_EVENT_FRAME);
     }
 
     // Append .sav to rom path and save cartridge ram
@@ -170,7 +186,7 @@ int main(int argc, char *argv[]) {
     cartridge_save_ram(save_path);
 
     SDL_DestroyWindow(win);
-    SDL_CloseAudioDevice(dev);
+    SDL_CloseAudioDevice(audio_dev);
     SDL_Quit();
     return 0;
 }

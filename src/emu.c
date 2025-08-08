@@ -29,7 +29,7 @@ int emu_execute() {
     int result = EMU_EVENT_NONE;
 
     if (new_frame) {
-        if (emu.frame_callback != 0) { emu.frame_callback(); }
+        if (emu.frame_callback != 0) { emu.frame_callback(ppu.fb); }
         result |= EMU_EVENT_FRAME;
     }
 
@@ -47,7 +47,7 @@ int emu_execute() {
 int emu_run_to(int mask) {
     int result = EMU_EVENT_NONE;
 
-    while (!(result & mask)) {
+    while (!(result & mask) && emu.running) {
         result |= emu_execute();
     }
 
