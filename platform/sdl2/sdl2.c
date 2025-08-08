@@ -6,7 +6,6 @@
 #include "emu.h"
 #include "mem.h"
 #include "cpu.h"
-#include "ppu.h"
 #include "joypad.h"
 #include "cartridge.h"
 #include "apu.h"

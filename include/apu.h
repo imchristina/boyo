@@ -65,6 +65,8 @@ typedef struct {
     int div_apu;
     bool div_clock_last;
     bool length_clock_last;
+    bool sweep_clock_last;
+    bool envelope_clock_last;
 } gb_apu_t;
 
 extern gb_apu_t apu;
