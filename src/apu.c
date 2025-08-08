@@ -16,8 +16,12 @@
 
 #define APU_PAN_RIGHT_CH1   0b00000001
 #define APU_PAN_RIGHT_CH2   0b00000010
+#define APU_PAN_RIGHT_CH3   0b00000100
+#define APU_PAN_RIGHT_CH4   0b00001000
 #define APU_PAN_LEFT_CH1    0b00010000
 #define APU_PAN_LEFT_CH2    0b00100000
+#define APU_PAN_LEFT_CH3    0b01000000
+#define APU_PAN_LEFT_CH4    0b10000000
 
 #define APU_CH1_SWEEP_STEP          0b00000111
 #define APU_CH1_SWEEP_DIRECTION     0b00001000
@@ -42,6 +46,13 @@
 #define APU_CH_CONTROL_LENGTH       0b01000000
 #define APU_CH_CONTROL_TRIGGER      0b10000000
 #define APU_CH_CONTROL_UNUSED       0b00111000
+
+#define APU_CH3_DAC_ENABLE          0b10000000
+#define APU_CH3_DAC_UNUSED          0b01111111
+
+#define APU_CH3_LEVEL_OUTPUT        0b01100000
+#define APU_CH3_LEVEL_OUTPUT_SHIFT  6
+#define APU_CH3_LEVEL_UNUSED        0b10011111
 
 const uint8_t APU_PULSE_SAMPLES[] = {
     0b11111110,
@@ -115,7 +126,67 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
             apu.control &= ~ch_control;
             printf("CH%d TIMER OFF!\n", ch_num);
         }
-        //printf("CH%d IS ON! %d\n", ch_num, ch->envelope & APU_CH_ENVELOPE_PACE);
+    } else {
+        ch->sample = 0;
+    }
+}
+
+void wave_execute(gb_apu_wave_t *ch) {
+    // Trigger
+    if (ch->control & APU_CH_CONTROL_TRIGGER) {
+        // Set length timer if expired
+        if (ch->length_timer >= 64) {
+            ch->length_timer = ch->length & APU_CH_LD_LENGTH;
+        }
+
+        ch->period_timer = ch->period;
+
+        ch->wave_index = 1;
+
+        ch->control &= ~APU_CH_CONTROL_TRIGGER;
+
+        apu.control |= APU_CONTROL_CH3;
+
+        printf("CH3 ON!\n");
+    }
+
+    // Execute
+    if (apu.control & APU_CONTROL_CH3) {
+        ch->period_timer += 2;
+        // If period timer overflows, execute
+        if (ch->period_timer > 0b11111111111) {
+            // Get the duty sample byte and extract the current bit
+            uint8_t wave_samples = ch->wave[ch->wave_index/2];
+            int wave_shift = (ch->wave_index & 1) * 4;
+            ch->sample = (wave_samples >> wave_shift) & 0b00001111;
+            ch->wave_index = (ch->wave_index + 1) % 32;
+
+            // Volume/level
+            uint8_t level = (ch->level & APU_CH3_LEVEL_OUTPUT) >> APU_CH3_LEVEL_OUTPUT_SHIFT;
+            if (level) {
+                ch->sample = ch->sample >> (level-1);
+            } else {
+                ch->sample = 0;
+            }
+
+            // Convert
+            ch->sample *= APU_SAMPLE_HIGH / 15;
+
+            ch->period_timer = ch->period;
+        }
+
+        // Length
+        ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
+        if (ch->length_timer >= 64) {
+            apu.control &= ~APU_CONTROL_CH3;
+            printf("CH3 TIMER OFF!\n");
+        }
+
+        // DAC enable
+        if (!ch->dac) {
+            apu.control &= ~APU_CONTROL_CH3;
+            printf("CH3 DAC OFF!\n");
+        }
     } else {
         ch->sample = 0;
     }
@@ -146,6 +217,7 @@ bool apu_execute(uint8_t t) {
             // CH1/CH2 execute
             pulse_execute(&apu.ch1, 1);
             pulse_execute(&apu.ch2, 2);
+            wave_execute(&apu.ch3);
 
             // Mix
             float timer_target = (float)1048576 / (float)APU_SAMPLE_RATE;
@@ -160,6 +232,8 @@ bool apu_execute(uint8_t t) {
                 *right += (apu.panning & APU_PAN_RIGHT_CH1) ? apu.ch1.sample : 0;
                 *left += (apu.panning & APU_PAN_LEFT_CH2) ? apu.ch2.sample : 0;
                 *right += (apu.panning & APU_PAN_RIGHT_CH2) ? apu.ch2.sample : 0;
+                *left += (apu.panning & APU_PAN_LEFT_CH3) ? apu.ch3.sample : 0;
+                *right += (apu.panning & APU_PAN_RIGHT_CH3) ? apu.ch3.sample : 0;
 
                 apu.buffer_index_timer -= timer_target;
                 apu.buffer_index += 2;
@@ -189,6 +263,9 @@ uint8_t apu_io_read(uint16_t addr) {
         case 0x16: return apu.ch2.length_duty | APU_CH_LD_LENGTH; break;
         case 0x17: return apu.ch2.envelope; break;
         case 0x19: return (apu.ch2.control & APU_CH_CONTROL_LENGTH) | ~APU_CH_CONTROL_LENGTH; break;
+        case 0x1A: return apu.ch3.dac | APU_CH3_DAC_UNUSED; break;
+        case 0x1C: return apu.ch3.level; break;
+        case 0x1E: return (apu.ch3.control & APU_CH_CONTROL_LENGTH) | ~APU_CH_CONTROL_LENGTH; break;
         case 0x24: return apu.volume_vin; break;
         case 0x25: return apu.panning; break;
         case 0x26: return apu.control | APU_CONTROL_UNUSED; break;
@@ -217,9 +294,26 @@ void apu_io_write(uint16_t addr, uint8_t data) {
             apu.ch2.period = (apu.ch2.period & APU_CH_PERIOD_LOW) | period_high;
             apu.ch2.control = data;
             break;
+        case 0x1A: apu.ch3.dac = data; break;
+        case 0x1B: apu.ch3.length = data; break;
+        case 0x1C: apu.ch3.level = data; break;
+        case 0x1D: apu.ch3.period = (apu.ch3.period & APU_CH_PERIOD_HIGH) | data; break;
+        case 0x1E:
+            period_high = ((data & APU_CH_CONTROL_PERIOD) << APU_CH_PERIOD_HIGH_SHIFT);
+            apu.ch3.period = (apu.ch3.period & APU_CH_PERIOD_LOW) | period_high;
+            apu.ch3.control = data;
+            break;
         case 0x24: apu.volume_vin = data; break;
         case 0x25: apu.panning = data; break;
         case 0x26: apu.control = (apu.control & ~APU_CONTROL_AUDIO) | (data & APU_CONTROL_AUDIO); break;
         default: break;
     }
+}
+
+uint8_t apu_wave_read(uint16_t addr) {
+    return apu.ch3.wave[addr-0x30];
+}
+
+void apu_wave_write(uint16_t addr, uint8_t data) {
+    apu.ch3.wave[addr-0x30] = data;
 }

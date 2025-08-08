@@ -20,25 +20,31 @@ typedef struct {
 } gb_apu_pulse_t;
 
 typedef struct {
-    uint8_t enable;
+    uint8_t dac;
     uint8_t length;
     uint8_t level;
     int period;
     uint8_t control;
-} gb_apu_ch3_t;
+    uint8_t wave[16];
+
+    uint8_t length_timer;
+    int period_timer;
+    uint8_t wave_index;
+    int16_t sample;
+} gb_apu_wave_t;
 
 typedef struct {
     uint8_t length;
     uint8_t envelope;
     uint8_t freq_rand;
     uint8_t control;
-} gb_apu_ch4_t;
+} gb_apu_noise_t;
 
 typedef struct {
     gb_apu_pulse_t ch1;
     gb_apu_pulse_t ch2;
-    gb_apu_ch3_t ch3;
-    gb_apu_ch4_t ch4;
+    gb_apu_wave_t ch3;
+    gb_apu_noise_t ch4;
 
     uint8_t volume_vin;
     uint8_t panning;
@@ -65,5 +71,7 @@ bool apu_execute(uint8_t t);
 bool apu_enabled();
 uint8_t apu_io_read(uint16_t addr);
 void apu_io_write(uint16_t addr, uint8_t data);
+uint8_t apu_wave_read(uint16_t addr);
+void apu_wave_write(uint16_t addr, uint8_t data);
 
 #endif

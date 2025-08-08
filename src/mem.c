@@ -26,8 +26,10 @@ uint8_t mem_io_read(uint8_t addr) {
         return timer_io_read(addr);
     } else if (addr == 0x0F) {
         return mem.iflag;
-    } else if (addr <= 0x3F) {
+    } else if (addr <= 0x2F) {
         return apu_io_read(addr);
+    } else if (addr <= 0x3F) {
+        return apu_wave_read(addr);
     } else if (addr <= 0x4B) {
         return ppu_io_read(addr);
     } else {
@@ -46,8 +48,10 @@ void mem_io_write(uint8_t addr, uint8_t data) {
         timer_io_write(addr, data);
     } else if (addr == 0x0F) {
         mem.iflag = data;
-    } else if (addr <= 0x3F) {
+    } else if (addr <= 0x2F) {
         apu_io_write(addr, data);
+    } else if (addr <= 0x3F) {
+        apu_wave_write(addr, data);
     } else if (addr <= 0x4B) {
         ppu_io_write(addr, data);
     } else if ((addr == 0x50) && data) {
