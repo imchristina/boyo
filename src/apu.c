@@ -176,6 +176,10 @@ bool apu_execute(uint8_t t) {
     return new_buffer;
 }
 
+bool apu_enabled() {
+    return apu.control | APU_CONTROL_AUDIO;
+}
+
 uint8_t apu_io_read(uint16_t addr) {
     switch (addr) {
         case 0x10: return apu.ch1.sweep | APU_CH1_SWEEP_UNUSED; break;

@@ -38,6 +38,9 @@ int emu_execute() {
         result |= EMU_EVENT_AUDIO;
     }
 
+    emu.ppu_enabled = ppu_enabled();
+    emu.apu_enabled = apu_enabled();
+
     return result;
 }
 

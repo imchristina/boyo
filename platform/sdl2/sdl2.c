@@ -180,7 +180,13 @@ int main(int argc, char *argv[]) {
 
     // Main loop
     while (emu.running) {
-        emu_run_to(EMU_EVENT_FRAME);
+        if (emu.ppu_enabled) {
+            emu_run_to(EMU_EVENT_FRAME);
+        } else if (emu.apu_enabled) {
+            emu_run_to(EMU_EVENT_AUDIO);
+        } else {
+            emu_run_to(EMU_EVENT_NONE);
+        }
     }
 
     // Append .sav to rom path and save cartridge ram

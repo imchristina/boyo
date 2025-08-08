@@ -219,6 +219,10 @@ bool ppu_execute(uint8_t t) {
     return new_frame;
 }
 
+bool ppu_enabled() {
+    return ppu.lcdc & LCDC_PPU_ENABLE;
+}
+
 void oam_dma(uint8_t data) {
     DEBUG_PRINTF_PPU("OAM DMA:0x%X00\n", data);
     for (uint16_t i = 0; i <= 0x9F; i++) {

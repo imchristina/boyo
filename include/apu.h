@@ -62,6 +62,7 @@ typedef struct {
 extern gb_apu_t apu;
 
 bool apu_execute(uint8_t t);
+bool apu_enabled();
 uint8_t apu_io_read(uint16_t addr);
 void apu_io_write(uint16_t addr, uint8_t data);
 

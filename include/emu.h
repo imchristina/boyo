@@ -13,6 +13,8 @@ typedef struct {
     emu_audio_callback_t audio_callback;
 
     bool running;
+    bool ppu_enabled;
+    bool apu_enabled;
 } gb_emu_t;
 
 extern gb_emu_t emu;
