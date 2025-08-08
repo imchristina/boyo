@@ -65,6 +65,7 @@ void process_events() {
     }
 }
 
+bool skip_frame = false;
 void frame_callback(uint8_t *buffer) {
     DEBUG_PRINTF("NEW FRAME\n");
 
@@ -83,18 +84,20 @@ void frame_callback(uint8_t *buffer) {
     uint64_t perf_count_end = SDL_GetPerformanceCounter();
     float elapsed = (float)((perf_count_end - perf_count_start) * 1000) / perf_count_freq;
 
-    if (elapsed < target_frametime) {
+    if (elapsed < target_frametime && !skip_frame) {
         SDL_Delay((uint32_t)(target_frametime - elapsed));
     }
 
     perf_count_start = SDL_GetPerformanceCounter();
+
+    skip_frame = false;
 
     process_events();
 }
 
 void audio_callback(int16_t *buffer, int len) {
     bool underrun = SDL_GetQueuedAudioSize(audio_dev) < (len * sizeof(int16_t));
-    bool overrun = SDL_GetQueuedAudioSize(audio_dev) > (len * sizeof(int16_t) * 2);
+    bool overrun = SDL_GetQueuedAudioSize(audio_dev) > (len * sizeof(int16_t) * 4);
 
     if (underrun) { printf("UNDERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
     if (overrun) { printf("OVERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
@@ -106,7 +109,7 @@ void audio_callback(int16_t *buffer, int len) {
     }
 
     if (underrun) {
-        emu_run_to(EMU_EVENT_AUDIO);
+        skip_frame = true;
     }
 }
 
