@@ -17,21 +17,7 @@ typedef struct {
     uint8_t volume;
     uint8_t pulse_index;
     int16_t sample;
-} gb_apu_ch1_t;
-
-typedef struct {
-    uint8_t length_duty;
-    uint8_t envelope;
-    int period;
-    uint8_t control;
-
-    uint8_t length_timer;
-    int period_timer;
-    uint8_t envelope_timer;
-    uint8_t volume;
-    uint8_t pulse_index;
-    int16_t sample;
-} gb_apu_ch2_t;
+} gb_apu_pulse_t;
 
 typedef struct {
     uint8_t enable;
@@ -49,8 +35,8 @@ typedef struct {
 } gb_apu_ch4_t;
 
 typedef struct {
-    gb_apu_ch1_t ch1;
-    gb_apu_ch2_t ch2;
+    gb_apu_pulse_t ch1;
+    gb_apu_pulse_t ch2;
     gb_apu_ch3_t ch3;
     gb_apu_ch4_t ch4;
 
@@ -63,9 +49,13 @@ typedef struct {
     float buffer_index_timer;
 
     int div_apu;
+    bool div_clock;
     bool div_clock_last;
+    bool length_clock;
     bool length_clock_last;
+    bool sweep_clock;
     bool sweep_clock_last;
+    bool envelope_clock;
     bool envelope_clock_last;
 } gb_apu_t;
 

@@ -52,6 +52,73 @@ const uint8_t APU_PULSE_SAMPLES[] = {
 
 gb_apu_t apu = {};
 
+void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
+    uint8_t ch_control = (ch_num == 1) ? APU_CONTROL_CH1 : APU_CONTROL_CH2;
+
+    // Trigger
+    if (ch->control & APU_CH_CONTROL_TRIGGER) {
+        apu.control |= ch_control;
+
+        // Set length timer if expired
+        if (ch->length_timer >= 64) {
+            ch->length_timer = ch->length_duty & APU_CH_LD_LENGTH;
+        }
+
+        ch->period_timer = ch->period;
+        ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
+        ch->volume = (ch->envelope & APU_CH_ENVELOPE_VOL) >> APU_CH_ENVELOPE_VOL_SHIFT;
+
+        ch->control &= ~APU_CH_CONTROL_TRIGGER;
+    }
+
+    // Execute
+    if (apu.control & ch_control) {
+        ch->period_timer++;
+        // If period timer overflows, execute
+        if (ch->period_timer > 0b11111111111) {
+            // Get the duty sample byte and extract the current bit
+            uint8_t wave_duty = (ch->length_duty & APU_CH_LD_DUTY) >> APU_CH_LD_DUTY_SHIFT;
+            uint8_t pulse_samples = APU_PULSE_SAMPLES[wave_duty];
+            ch->sample = (pulse_samples >> ch->pulse_index) & 1;
+            ch->sample *= APU_SAMPLE_HIGH;
+            ch->pulse_index = (ch->pulse_index + 1) % 8;
+
+            // Volume
+            ch->sample /= 16 - ch->volume;
+
+            ch->period_timer = ch->period;
+        }
+
+        // Envelope
+        if (ch->envelope & APU_CH_ENVELOPE_PACE && apu.envelope_clock) {
+            ch->envelope_timer -= 1;
+            if (ch->envelope_timer <= 0) {
+                if (ch->envelope & APU_CH_ENVELOPE_DIR) {
+                    if (ch->volume < 15) { ch->volume += 1; }
+                } else {
+                    ch->volume -= 1;
+                }
+
+                if (ch->volume <= 0) {
+                    ch->sample = 0;
+                    apu.control &= ~ch_control;
+                    printf("CH%d ENVELOPE OFF!\n", ch_num);
+                } else {
+                    ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
+                }
+            }
+        }
+
+        // Length
+        ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
+        if (ch->length_timer >= 64) {
+            ch->sample = 0;
+            apu.control &= ~ch_control;
+            printf("CH%d TIMER OFF!\n", ch_num);
+        }
+    }
+}
+
 bool apu_execute(uint8_t t) {
     bool new_buffer = false;
 
@@ -61,144 +128,22 @@ bool apu_execute(uint8_t t) {
             // Clocks
 
             // DIV_APU is updated on DIV bit 4 going low
-            bool div_clock = (timer.div >> 4) & 1;
-            apu.div_apu += !div_clock && apu.div_clock_last;
-            apu.div_clock_last = div_clock;
+            apu.div_clock = (timer.div >> 4) & 1;
+            apu.div_apu += !apu.div_clock && apu.div_clock_last;
+            apu.div_clock_last = apu.div_clock;
 
-            bool length_clock = (!(apu.div_apu & 1)) && apu.length_clock_last;
+            apu.length_clock = (!(apu.div_apu & 1)) && apu.length_clock_last;
             apu.length_clock_last = apu.div_apu & 1;
 
-            bool sweep_clock = (!(apu.div_apu & 0b10)) && apu.sweep_clock_last;
+            apu.sweep_clock = (!(apu.div_apu & 0b10)) && apu.sweep_clock_last;
             apu.sweep_clock_last = apu.div_apu & 0b10;
 
-            bool envelope_clock = (!(apu.div_apu & 0b100)) && apu.envelope_clock_last;
+            apu.envelope_clock = (!(apu.div_apu & 0b100)) && apu.envelope_clock_last;
             apu.envelope_clock_last = apu.div_apu & 0b100;
 
-            // CH1 trigger
-            if (apu.ch1.control & APU_CH_CONTROL_TRIGGER) {
-                apu.control |= APU_CONTROL_CH1;
-
-                // Set length timer if expired
-                if (apu.ch1.length_timer >= 64) {
-                    apu.ch1.length_timer = apu.ch1.length_duty & APU_CH_LD_LENGTH;
-                }
-
-                apu.ch1.period_timer = apu.ch1.period;
-                apu.ch1.envelope_timer = (apu.ch1.envelope & APU_CH_ENVELOPE_PACE);
-                apu.ch1.volume = (apu.ch1.envelope & APU_CH_ENVELOPE_VOL) >> APU_CH_ENVELOPE_VOL_SHIFT;
-
-                apu.ch1.control &= ~APU_CH_CONTROL_TRIGGER;
-            }
-
-            // CH2 trigger
-            if (apu.ch2.control & APU_CH_CONTROL_TRIGGER) {
-                apu.control |= APU_CONTROL_CH2;
-
-                // Set length timer if expired
-                if (apu.ch2.length_timer >= 64) {
-                    apu.ch2.length_timer = apu.ch2.length_duty & APU_CH_LD_LENGTH;
-                }
-
-                apu.ch2.period_timer = apu.ch2.period;
-                apu.ch2.envelope_timer = (apu.ch2.envelope & APU_CH_ENVELOPE_PACE);
-                apu.ch2.volume = (apu.ch1.envelope & APU_CH_ENVELOPE_VOL) >> APU_CH_ENVELOPE_VOL_SHIFT;
-
-                apu.ch2.control &= ~APU_CH_CONTROL_TRIGGER;
-            }
-
-            // CH1 execute
-            if (apu.control & APU_CONTROL_CH1) {
-                apu.ch1.period_timer++;
-                // If period timer overflows, execute
-                if (apu.ch1.period_timer > 0b11111111111) {
-                    // Get the duty sample byte and extract the current bit
-                    uint8_t wave_duty = (apu.ch1.length_duty & APU_CH_LD_DUTY) >> APU_CH_LD_DUTY_SHIFT;
-                    uint8_t pulse_samples = APU_PULSE_SAMPLES[wave_duty];
-                    apu.ch1.sample = (pulse_samples >> apu.ch1.pulse_index) & 1;
-                    apu.ch1.sample *= APU_SAMPLE_HIGH;
-                    apu.ch1.pulse_index = (apu.ch1.pulse_index + 1) % 8;
-
-                    // Volume
-                    apu.ch1.sample /= 16 - apu.ch1.volume;
-
-                    apu.ch1.period_timer = apu.ch1.period;
-                }
-
-                // Envelope
-                if (apu.ch1.envelope & APU_CH_ENVELOPE_PACE && envelope_clock) {
-                    apu.ch1.envelope_timer -= 1;
-                    if (apu.ch1.envelope_timer <= 0) {
-                        if (apu.ch1.envelope & APU_CH_ENVELOPE_DIR) {
-                            if (apu.ch1.volume < 15) { apu.ch1.volume += 1; }
-                        } else {
-                            apu.ch1.volume -= 1;
-                        }
-
-                        if (apu.ch1.volume <= 0) {
-                            apu.ch1.sample = 0;
-                            apu.control &= ~APU_CONTROL_CH1;
-                            printf("CH1 ENVELOPE OFF!\n");
-                        } else {
-                            apu.ch1.envelope_timer = (apu.ch1.envelope & APU_CH_ENVELOPE_PACE);
-                        }
-                    }
-                }
-
-                // Length
-                apu.ch1.length_timer += length_clock && (apu.ch1.control & APU_CH_CONTROL_LENGTH);
-                if (apu.ch1.length_timer >= 64) {
-                    apu.ch1.sample = 0;
-                    apu.control &= ~APU_CONTROL_CH1;
-                    printf("CH1 TIMER OFF!\n");
-                }
-            }
-
-            // CH2 execute
-            if (apu.control & APU_CONTROL_CH2) {
-                apu.ch2.period_timer++;
-                // If period timer overflows, execute
-                if (apu.ch2.period_timer > 0b11111111111) {
-                    // Get the duty sample byte and extract the current bit
-                    uint8_t wave_duty = (apu.ch2.length_duty & APU_CH_LD_DUTY) >> APU_CH_LD_DUTY_SHIFT;
-                    uint8_t pulse_samples = APU_PULSE_SAMPLES[wave_duty];
-                    apu.ch2.sample = (pulse_samples >> apu.ch2.pulse_index) & 1;
-                    apu.ch2.sample *= APU_SAMPLE_HIGH;
-                    apu.ch2.pulse_index = (apu.ch2.pulse_index + 1) % 8;
-
-                    // Volume
-                    apu.ch2.sample /= 16 - apu.ch2.volume;
-
-                    apu.ch2.period_timer = apu.ch2.period;
-                }
-
-                // Envelope
-                if (apu.ch2.envelope & APU_CH_ENVELOPE_PACE && envelope_clock) {
-                    apu.ch2.envelope_timer -= 1;
-                    if (apu.ch2.envelope_timer <= 0) {
-                        if (apu.ch2.envelope & APU_CH_ENVELOPE_DIR) {
-                            if (apu.ch2.volume < 15) { apu.ch2.volume += 1; }
-                        } else {
-                            apu.ch2.volume -= 1;
-                        }
-
-                        if (apu.ch2.volume <= 0) {
-                            apu.ch2.sample = 0;
-                            apu.control &= ~APU_CONTROL_CH1;
-                            printf("CH2 ENVELOPE OFF!\n");
-                        } else {
-                            apu.ch2.envelope_timer = (apu.ch2.envelope & APU_CH_ENVELOPE_PACE);
-                        }
-                    }
-                }
-
-                // Length
-                apu.ch2.length_timer += length_clock && (apu.ch2.control & APU_CH_CONTROL_LENGTH);
-                if (apu.ch2.length_timer >= 64) {
-                    apu.ch2.sample = 0;
-                    apu.control &= ~APU_CONTROL_CH1;
-                    printf("CH2 TIMER OFF!\n");
-                }
-            }
+            // CH1/CH2 execute
+            pulse_execute(&apu.ch1, 1);
+            pulse_execute(&apu.ch2, 2);
 
             // Mix
             float timer_target = (float)1048576 / (float)APU_SAMPLE_RATE;
