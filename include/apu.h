@@ -16,7 +16,7 @@ typedef struct {
     uint8_t envelope_timer;
     uint8_t volume;
     uint8_t pulse_index;
-    int16_t sample;
+    uint8_t sample;
 } gb_apu_pulse_t;
 
 typedef struct {
@@ -30,7 +30,7 @@ typedef struct {
     uint8_t length_timer;
     int period_timer;
     uint8_t wave_index;
-    int16_t sample;
+    uint8_t sample;
 } gb_apu_wave_t;
 
 typedef struct {
@@ -38,6 +38,8 @@ typedef struct {
     uint8_t envelope;
     uint8_t freq_rand;
     uint8_t control;
+
+    uint8_t sample;
 } gb_apu_noise_t;
 
 typedef struct {

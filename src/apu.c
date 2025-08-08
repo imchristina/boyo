@@ -96,7 +96,7 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
             ch->pulse_index = (ch->pulse_index + 1) % 8;
 
             // Volume
-            ch->sample *= ch->volume * (APU_SAMPLE_HIGH / 15);
+            ch->sample *= ch->volume;
 
             ch->period_timer = ch->period;
         }
@@ -169,9 +169,6 @@ void wave_execute(gb_apu_wave_t *ch) {
                 ch->sample = 0;
             }
 
-            // Convert
-            ch->sample *= APU_SAMPLE_HIGH / 15;
-
             ch->period_timer = ch->period;
         }
 
@@ -222,18 +219,24 @@ bool apu_execute(uint8_t t) {
             // Mix
             float timer_target = (float)1048576 / (float)APU_SAMPLE_RATE;
             if (apu.buffer_index_timer > timer_target) {
+                // Get samples and convert to output format
+                int16_t ch1_sample = apu.ch1.sample * (APU_SAMPLE_HIGH / 15);
+                int16_t ch2_sample = apu.ch2.sample * (APU_SAMPLE_HIGH / 15);
+                int16_t ch3_sample = apu.ch3.sample * (APU_SAMPLE_HIGH / 15);
+                int16_t ch4_sample = apu.ch4.sample * (APU_SAMPLE_HIGH / 15);
+
+                // Write out samples and pan
                 int16_t *left = &apu.buffer[apu.buffer_index];
                 int16_t *right = &apu.buffer[apu.buffer_index+1];
                 *left = 0;
                 *right = 0;
 
-                // Write out samples and pan
-                *left += (apu.panning & APU_PAN_LEFT_CH1) ? apu.ch1.sample : 0;
-                *right += (apu.panning & APU_PAN_RIGHT_CH1) ? apu.ch1.sample : 0;
-                *left += (apu.panning & APU_PAN_LEFT_CH2) ? apu.ch2.sample : 0;
-                *right += (apu.panning & APU_PAN_RIGHT_CH2) ? apu.ch2.sample : 0;
-                *left += (apu.panning & APU_PAN_LEFT_CH3) ? apu.ch3.sample : 0;
-                *right += (apu.panning & APU_PAN_RIGHT_CH3) ? apu.ch3.sample : 0;
+                *left += (apu.panning & APU_PAN_LEFT_CH1) ? ch1_sample : 0;
+                *right += (apu.panning & APU_PAN_RIGHT_CH1) ? ch1_sample : 0;
+                *left += (apu.panning & APU_PAN_LEFT_CH2) ? ch2_sample : 0;
+                *right += (apu.panning & APU_PAN_RIGHT_CH2) ? ch2_sample : 0;
+                *left += (apu.panning & APU_PAN_LEFT_CH3) ? ch3_sample : 0;
+                *right += (apu.panning & APU_PAN_RIGHT_CH3) ? ch3_sample : 0;
 
                 apu.buffer_index_timer -= timer_target;
                 apu.buffer_index += 2;
