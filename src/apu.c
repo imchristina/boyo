@@ -57,8 +57,6 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
 
     // Trigger
     if (ch->control & APU_CH_CONTROL_TRIGGER) {
-        apu.control |= ch_control;
-
         // Set length timer if expired
         if (ch->length_timer >= 64) {
             ch->length_timer = ch->length_duty & APU_CH_LD_LENGTH;
@@ -69,6 +67,10 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
         ch->volume = (ch->envelope & APU_CH_ENVELOPE_VOL) >> APU_CH_ENVELOPE_VOL_SHIFT;
 
         ch->control &= ~APU_CH_CONTROL_TRIGGER;
+
+        apu.control |= ch_control;
+
+        printf("CH%d ON!\n", ch_num);
     }
 
     // Execute
@@ -80,27 +82,25 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
             uint8_t wave_duty = (ch->length_duty & APU_CH_LD_DUTY) >> APU_CH_LD_DUTY_SHIFT;
             uint8_t pulse_samples = APU_PULSE_SAMPLES[wave_duty];
             ch->sample = (pulse_samples >> ch->pulse_index) & 1;
-            ch->sample *= APU_SAMPLE_HIGH;
             ch->pulse_index = (ch->pulse_index + 1) % 8;
 
             // Volume
-            ch->sample /= 16 - ch->volume;
+            ch->sample *= ch->volume * (APU_SAMPLE_HIGH / 15);
 
             ch->period_timer = ch->period;
         }
 
         // Envelope
-        if (ch->envelope & APU_CH_ENVELOPE_PACE && apu.envelope_clock) {
+        if ((ch->envelope & APU_CH_ENVELOPE_PACE) && apu.envelope_clock) {
             ch->envelope_timer -= 1;
             if (ch->envelope_timer <= 0) {
                 if (ch->envelope & APU_CH_ENVELOPE_DIR) {
                     if (ch->volume < 15) { ch->volume += 1; }
                 } else {
-                    ch->volume -= 1;
+                    if (ch->volume > 0) { ch->volume -= 1; }
                 }
 
                 if (ch->volume <= 0) {
-                    ch->sample = 0;
                     apu.control &= ~ch_control;
                     printf("CH%d ENVELOPE OFF!\n", ch_num);
                 } else {
@@ -112,10 +112,12 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
         // Length
         ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
         if (ch->length_timer >= 64) {
-            ch->sample = 0;
             apu.control &= ~ch_control;
             printf("CH%d TIMER OFF!\n", ch_num);
         }
+        //printf("CH%d IS ON! %d\n", ch_num, ch->envelope & APU_CH_ENVELOPE_PACE);
+    } else {
+        ch->sample = 0;
     }
 }
 
