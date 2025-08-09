@@ -38,9 +38,14 @@ typedef struct {
 typedef struct {
     uint8_t length;
     uint8_t envelope;
-    uint8_t freq_rand;
+    uint8_t rand;
     uint8_t control;
 
+    uint8_t length_timer;
+    uint8_t envelope_timer;
+    uint8_t volume;
+    uint16_t lfsr;
+    int lfsr_timer;
     uint8_t sample;
 } gb_apu_noise_t;
 

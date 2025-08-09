@@ -54,6 +54,11 @@
 #define APU_CH3_LEVEL_OUTPUT_SHIFT  5
 #define APU_CH3_LEVEL_UNUSED        0b10011111
 
+#define APU_CH4_RAND_CLK_DIV        0b00000111
+#define APU_CH4_RAND_LFSR_WIDTH     0b00001000
+#define APU_CH4_RAND_CLK_SEL        0b11110000
+#define APU_CH4_RAND_CLK_SEL_SHIFT  4
+
 const uint8_t APU_PULSE_SAMPLES[] = {
     0b11111110,
     0b01111110,
@@ -225,6 +230,82 @@ void wave_execute(gb_apu_wave_t *ch) {
     }
 }
 
+void noise_execute(gb_apu_noise_t *ch) {
+    // Trigger
+    if (ch->control & APU_CH_CONTROL_TRIGGER) {
+        // Set length timer if expired
+        if (ch->length_timer >= 64) {
+            ch->length_timer = ch->length & APU_CH_LD_LENGTH;
+        }
+
+        ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
+        ch->volume = (ch->envelope & APU_CH_ENVELOPE_VOL) >> APU_CH_ENVELOPE_VOL_SHIFT;
+        ch->lfsr = 0;
+
+        ch->control &= ~APU_CH_CONTROL_TRIGGER;
+        apu.control |= APU_CONTROL_CH4;
+
+        printf("CH4 ON!\n");
+    }
+
+    // Execute
+    if (apu.control & APU_CONTROL_CH4) {
+        // LFSR clock
+        uint8_t clock_div = ch->rand & APU_CH4_RAND_CLK_DIV;
+        uint8_t clock_shift = (ch->rand & APU_CH4_RAND_CLK_SEL) >> APU_CH4_RAND_CLK_SEL_SHIFT;
+        int timer_target = 4 * clock_div * (1 << clock_shift);
+        bool lfsr_clock = false;
+        if (ch->lfsr_timer >= timer_target) {
+            ch->lfsr_timer = 0;
+            lfsr_clock = true;
+        }
+        ch->lfsr_timer++;
+
+        // LFSR
+        if (lfsr_clock) {
+            bool bit0 = ch->lfsr & 1;
+            bool bit1 = (ch->lfsr & 0b10) >> 1;
+            bool result = bit0 == bit1;
+
+            bool short_mode = ch->rand & APU_CH4_RAND_LFSR_WIDTH;
+            uint16_t mask = short_mode ? (1 << 7) : (1 << 15);
+            ch->lfsr &= ~mask; // Clear bit
+            ch->lfsr |= mask * result; // Set bit
+            ch->lfsr = ch->lfsr >> 1;
+
+            ch->sample = result * ch->volume;
+        }
+
+        // Envelope
+        if ((ch->envelope & APU_CH_ENVELOPE_PACE) && apu.envelope_clock) {
+            ch->envelope_timer -= 1;
+            if (ch->envelope_timer <= 0) {
+                if (ch->envelope & APU_CH_ENVELOPE_DIR) {
+                    if (ch->volume < 15) { ch->volume += 1; }
+                } else {
+                    if (ch->volume > 0) { ch->volume -= 1; }
+                }
+
+                if (ch->volume <= 0) {
+                    apu.control &= ~APU_CONTROL_CH4;
+                    printf("CH4 ENVELOPE OFF!\n");
+                } else {
+                    ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
+                }
+            }
+        }
+
+        // Length
+        ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
+        if (ch->length_timer >= 64) {
+            apu.control &= ~APU_CONTROL_CH4;
+            printf("CH4 TIMER OFF!\n");
+        }
+    } else {
+        ch->sample = 0;
+    }
+}
+
 bool apu_execute(uint8_t t) {
     bool new_buffer = false;
 
@@ -247,10 +328,11 @@ bool apu_execute(uint8_t t) {
             apu.envelope_clock = (!(apu.div_apu & 0b100)) && apu.envelope_clock_last;
             apu.envelope_clock_last = apu.div_apu & 0b100;
 
-            // CH1/CH2 execute
+            // Channel execute
             pulse_execute(&apu.ch1, 1);
             pulse_execute(&apu.ch2, 2);
             wave_execute(&apu.ch3);
+            noise_execute(&apu.ch4);
 
             // Mix
             float timer_target = (float)1048576 / (float)APU_SAMPLE_RATE;
@@ -273,6 +355,8 @@ bool apu_execute(uint8_t t) {
                 *right += (apu.panning & APU_PAN_RIGHT_CH2) ? ch2_sample : 0;
                 *left += (apu.panning & APU_PAN_LEFT_CH3) ? ch3_sample : 0;
                 *right += (apu.panning & APU_PAN_RIGHT_CH3) ? ch3_sample : 0;
+                *left += (apu.panning & APU_PAN_LEFT_CH4) ? ch4_sample : 0;
+                *right += (apu.panning & APU_PAN_RIGHT_CH4) ? ch4_sample : 0;
 
                 apu.buffer_index_timer -= timer_target;
                 apu.buffer_index += 2;
@@ -305,6 +389,9 @@ uint8_t apu_io_read(uint16_t addr) {
         case 0x1A: return apu.ch3.dac | APU_CH3_DAC_UNUSED; break;
         case 0x1C: return apu.ch3.level; break;
         case 0x1E: return (apu.ch3.control & APU_CH_CONTROL_LENGTH) | ~APU_CH_CONTROL_LENGTH; break;
+        case 0x21: return apu.ch4.envelope; break;
+        case 0x22: return apu.ch4.rand; break;
+        case 0x23: return apu.ch4.control | APU_CH_CONTROL_PERIOD | APU_CH_CONTROL_UNUSED; break;
         case 0x24: return apu.volume_vin; break;
         case 0x25: return apu.panning; break;
         case 0x26: return apu.control | APU_CONTROL_UNUSED; break;
@@ -342,6 +429,10 @@ void apu_io_write(uint16_t addr, uint8_t data) {
             apu.ch3.period = (apu.ch3.period & APU_CH_PERIOD_LOW) | period_high;
             apu.ch3.control = data;
             break;
+        case 0x20: apu.ch4.length = data; break;
+        case 0x21: apu.ch4.envelope = data; break;
+        case 0x22: apu.ch4.rand = data; break;
+        case 0x23: apu.ch4.control = data; break;
         case 0x24: apu.volume_vin = data; break;
         case 0x25: apu.panning = data; break;
         case 0x26: apu.control = (apu.control & ~APU_CONTROL_AUDIO) | (data & APU_CONTROL_AUDIO); break;
