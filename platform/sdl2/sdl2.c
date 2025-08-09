@@ -99,8 +99,8 @@ void audio_callback(int16_t *buffer, int len) {
     bool underrun = SDL_GetQueuedAudioSize(audio_dev) < (len * sizeof(int16_t));
     bool overrun = SDL_GetQueuedAudioSize(audio_dev) > (len * sizeof(int16_t) * 4);
 
-    if (underrun) { printf("UNDERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
-    if (overrun) { printf("OVERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
+    if (underrun) { DEBUG_PRINTF("AUDIO UNDERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
+    if (overrun) { DEBUG_PRINTF("AUDIO OVERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
 
     if (!overrun) {
         if (SDL_QueueAudio(audio_dev, buffer, len * sizeof(int16_t)) < 0) {

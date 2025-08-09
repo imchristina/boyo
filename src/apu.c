@@ -4,6 +4,7 @@
 
 #include "apu.h"
 #include "timer.h"
+#include "log.h"
 
 #define APU_SAMPLE_HIGH INT16_MAX / 4
 
@@ -87,7 +88,7 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
 
         apu.control |= ch_control;
 
-        printf("CH%d ON!\n", ch_num);
+        DEBUG_PRINTF_APU("CH%d ON!\n", ch_num);
     }
 
     // Execute
@@ -137,7 +138,7 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
             // Always turn of channel if period overflows
             if (!(ch->sweep & APU_CH1_SWEEP_DIRECTION) && (ch->period > 0b11111111111)) {
                 apu.control &= ~ch_control;
-                printf("CH%d SWEEP OFF!\n", ch_num);
+                DEBUG_PRINTF_APU("CH%d SWEEP OFF!\n", ch_num);
             }
         }
 
@@ -153,7 +154,7 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
 
                 if (ch->volume <= 0) {
                     apu.control &= ~ch_control;
-                    printf("CH%d ENVELOPE OFF!\n", ch_num);
+                    DEBUG_PRINTF_APU("CH%d ENVELOPE OFF!\n", ch_num);
                 } else {
                     ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
                 }
@@ -164,7 +165,7 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
         ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
         if (ch->length_timer >= 64) {
             apu.control &= ~ch_control;
-            printf("CH%d TIMER OFF!\n", ch_num);
+            DEBUG_PRINTF_APU("CH%d TIMER OFF!\n", ch_num);
         }
     } else {
         ch->sample = 0;
@@ -189,7 +190,7 @@ void wave_execute(gb_apu_wave_t *ch) {
 
         apu.control |= APU_CONTROL_CH3;
 
-        printf("CH3 ON!\n");
+        DEBUG_PRINTF_APU("CH3 ON!\n");
     }
 
     // Execute
@@ -217,13 +218,13 @@ void wave_execute(gb_apu_wave_t *ch) {
         ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
         if (ch->length_timer >= 64) {
             apu.control &= ~APU_CONTROL_CH3;
-            printf("CH3 TIMER OFF!\n");
+            DEBUG_PRINTF_APU("CH3 TIMER OFF!\n");
         }
 
         // DAC enable
         if (!ch->dac) {
             apu.control &= ~APU_CONTROL_CH3;
-            printf("CH3 DAC OFF!\n");
+            DEBUG_PRINTF_APU("CH3 DAC OFF!\n");
         }
     } else {
         ch->sample = 0;
@@ -245,7 +246,7 @@ void noise_execute(gb_apu_noise_t *ch) {
         ch->control &= ~APU_CH_CONTROL_TRIGGER;
         apu.control |= APU_CONTROL_CH4;
 
-        printf("CH4 ON!\n");
+        DEBUG_PRINTF_APU("CH4 ON!\n");
     }
 
     // Execute
@@ -288,7 +289,7 @@ void noise_execute(gb_apu_noise_t *ch) {
 
                 if (ch->volume <= 0) {
                     apu.control &= ~APU_CONTROL_CH4;
-                    printf("CH4 ENVELOPE OFF!\n");
+                    DEBUG_PRINTF_APU("CH4 ENVELOPE OFF!\n");
                 } else {
                     ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
                 }
@@ -299,7 +300,7 @@ void noise_execute(gb_apu_noise_t *ch) {
         ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
         if (ch->length_timer >= 64) {
             apu.control &= ~APU_CONTROL_CH4;
-            printf("CH4 TIMER OFF!\n");
+            DEBUG_PRINTF_APU("CH4 TIMER OFF!\n");
         }
     } else {
         ch->sample = 0;
