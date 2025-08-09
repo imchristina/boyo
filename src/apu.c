@@ -269,12 +269,15 @@ void noise_execute(gb_apu_noise_t *ch) {
             bool result = bit0 == bit1;
 
             bool short_mode = ch->rand & APU_CH4_RAND_LFSR_WIDTH;
-            uint16_t mask = short_mode ? (1 << 7) : (1 << 15);
-            ch->lfsr &= ~mask; // Clear bit
-            ch->lfsr |= mask * result; // Set bit
+            ch->lfsr &= ~(1 << 15); // Clear bit
+            ch->lfsr |= (1 << 15) * result; // Set bit
+            if (short_mode) {
+                ch->lfsr &= ~(1 << 7); // Clear bit
+                ch->lfsr |= (1 << 7) * result; // Set bit
+            }
             ch->lfsr = ch->lfsr >> 1;
 
-            ch->sample = result * ch->volume;
+            ch->sample = (ch->lfsr & 1) * ch->volume;
         }
 
         // Envelope
