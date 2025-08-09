@@ -51,7 +51,7 @@
 #define APU_CH3_DAC_UNUSED          0b01111111
 
 #define APU_CH3_LEVEL_OUTPUT        0b01100000
-#define APU_CH3_LEVEL_OUTPUT_SHIFT  6
+#define APU_CH3_LEVEL_OUTPUT_SHIFT  5
 #define APU_CH3_LEVEL_UNUSED        0b10011111
 
 const uint8_t APU_PULSE_SAMPLES[] = {
@@ -176,6 +176,8 @@ void wave_execute(gb_apu_wave_t *ch) {
 
         ch->period_timer = ch->period;
 
+        ch->volume = (ch->level & APU_CH3_LEVEL_OUTPUT) >> APU_CH3_LEVEL_OUTPUT_SHIFT;
+
         ch->wave_index = 1;
 
         ch->control &= ~APU_CH_CONTROL_TRIGGER;
@@ -197,9 +199,8 @@ void wave_execute(gb_apu_wave_t *ch) {
             ch->wave_index = (ch->wave_index + 1) % 32;
 
             // Volume/level
-            uint8_t level = (ch->level & APU_CH3_LEVEL_OUTPUT) >> APU_CH3_LEVEL_OUTPUT_SHIFT;
-            if (level) {
-                ch->sample = ch->sample >> (level-1);
+            if (ch->volume) {
+                ch->sample = ch->sample >> (ch->volume-1);
             } else {
                 ch->sample = 0;
             }
