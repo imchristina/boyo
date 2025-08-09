@@ -23,12 +23,6 @@
 #define APU_PAN_LEFT_CH3    0b01000000
 #define APU_PAN_LEFT_CH4    0b10000000
 
-#define APU_CH1_SWEEP_STEP          0b00000111
-#define APU_CH1_SWEEP_DIRECTION     0b00001000
-#define APU_CH1_SWEEP_PACE          0b01110000
-#define APU_CH1_SWEEP_PACE_SHIFT    4
-#define APU_CH1_SWEEP_UNUSED        0b10000000
-
 #define APU_CH_LD_LENGTH       0b00111111
 #define APU_CH_LD_DUTY         0b11000000
 #define APU_CH_LD_DUTY_SHIFT   6
@@ -46,6 +40,12 @@
 #define APU_CH_CONTROL_LENGTH       0b01000000
 #define APU_CH_CONTROL_TRIGGER      0b10000000
 #define APU_CH_CONTROL_UNUSED       0b00111000
+
+#define APU_CH1_SWEEP_STEP          0b00000111
+#define APU_CH1_SWEEP_DIRECTION     0b00001000
+#define APU_CH1_SWEEP_PACE          0b01110000
+#define APU_CH1_SWEEP_PACE_SHIFT    4
+#define APU_CH1_SWEEP_UNUSED        0b10000000
 
 #define APU_CH3_DAC_ENABLE          0b10000000
 #define APU_CH3_DAC_UNUSED          0b01111111
@@ -73,6 +73,7 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
             ch->length_timer = ch->length_duty & APU_CH_LD_LENGTH;
         }
 
+        ch->sweep_timer = (ch->sweep & APU_CH1_SWEEP_PACE) >> APU_CH1_SWEEP_PACE_SHIFT;
         ch->period_timer = ch->period;
         ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
         ch->volume = (ch->envelope & APU_CH_ENVELOPE_VOL) >> APU_CH_ENVELOPE_VOL_SHIFT;
@@ -99,6 +100,40 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
             ch->sample *= ch->volume;
 
             ch->period_timer = ch->period;
+        }
+
+        // Sweep (CH1)
+        if (ch_num == 1) {
+            if (ch->sweep & APU_CH1_SWEEP_PACE && apu.sweep_clock) {
+                if (ch->sweep_timer <= 0) {
+                    uint8_t step = ch->sweep & APU_CH1_SWEEP_STEP;
+                    bool direction = ch->sweep & APU_CH1_SWEEP_DIRECTION;
+                    uint8_t pace = (ch->sweep & APU_CH1_SWEEP_PACE) >> APU_CH1_SWEEP_PACE_SHIFT;
+
+                    // pow(2, step)
+                    int step_pow = 1;
+                    for (int i = 0; i < step; i++) {
+                        step_pow *= 2;
+                    }
+
+                    int period_delta = ch->period / step_pow;
+
+                    if (direction) {
+                        if (ch->period > 0) { ch->period -= period_delta; }
+                    } else {
+                        ch->period += period_delta;
+                    }
+
+                    ch->sweep_timer = pace;
+                }
+                ch->sweep_timer--;
+            }
+
+            // Always turn of channel if period overflows
+            if (!(ch->sweep & APU_CH1_SWEEP_DIRECTION) && (ch->period > 0b11111111111)) {
+                apu.control &= ~ch_control;
+                printf("CH%d SWEEP OFF!\n", ch_num);
+            }
         }
 
         // Envelope

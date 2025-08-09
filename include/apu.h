@@ -11,6 +11,7 @@ typedef struct {
     int period;
     uint8_t control;
 
+    uint8_t sweep_timer;
     uint8_t length_timer;
     int period_timer;
     uint8_t envelope_timer;
