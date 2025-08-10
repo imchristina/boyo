@@ -81,7 +81,9 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
 
         ch->sweep_timer = (ch->sweep & APU_CH1_SWEEP_PACE) >> APU_CH1_SWEEP_PACE_SHIFT;
         ch->period_timer = ch->period;
-        ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
+        ch->envelope_pace = (ch->envelope & APU_CH_ENVELOPE_PACE);
+        ch->envelope_dir = (ch->envelope & APU_CH_ENVELOPE_DIR);
+        ch->envelope_timer = ch->envelope_pace;
         ch->volume = (ch->envelope & APU_CH_ENVELOPE_VOL) >> APU_CH_ENVELOPE_VOL_SHIFT;
 
         ch->control &= ~APU_CH_CONTROL_TRIGGER;
@@ -143,21 +145,16 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
         }
 
         // Envelope
-        if ((ch->envelope & APU_CH_ENVELOPE_PACE) && apu.envelope_clock) {
+        if (ch->envelope_pace && apu.envelope_clock) {
             ch->envelope_timer -= 1;
             if (ch->envelope_timer <= 0) {
-                if (ch->envelope & APU_CH_ENVELOPE_DIR) {
+                if (ch->envelope_dir) {
                     if (ch->volume < 15) { ch->volume += 1; }
                 } else {
                     if (ch->volume > 0) { ch->volume -= 1; }
                 }
 
-                if (ch->volume <= 0) {
-                    apu.control &= ~ch_control;
-                    DEBUG_PRINTF_APU("CH%d ENVELOPE OFF!\n", ch_num);
-                } else {
-                    ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
-                }
+                ch->envelope_timer = ch->envelope_pace;
             }
         }
 
@@ -182,8 +179,6 @@ void wave_execute(gb_apu_wave_t *ch) {
 
         ch->period_timer = ch->period;
 
-        ch->volume = (ch->level & APU_CH3_LEVEL_OUTPUT) >> APU_CH3_LEVEL_OUTPUT_SHIFT;
-
         ch->wave_index = 1;
 
         ch->control &= ~APU_CH_CONTROL_TRIGGER;
@@ -205,8 +200,9 @@ void wave_execute(gb_apu_wave_t *ch) {
             ch->wave_index = (ch->wave_index + 1) % 32;
 
             // Volume/level
-            if (ch->volume) {
-                ch->sample = ch->sample >> (ch->volume-1);
+            uint8_t volume = (ch->level & APU_CH3_LEVEL_OUTPUT) >> APU_CH3_LEVEL_OUTPUT_SHIFT;
+            if (volume) {
+                ch->sample = ch->sample >> (volume-1);
             } else {
                 ch->sample = 0;
             }
@@ -239,7 +235,9 @@ void noise_execute(gb_apu_noise_t *ch) {
             ch->length_timer = ch->length & APU_CH_LD_LENGTH;
         }
 
-        ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
+        ch->envelope_pace = (ch->envelope & APU_CH_ENVELOPE_PACE);
+        ch->envelope_dir = (ch->envelope & APU_CH1_SWEEP_DIRECTION);
+        ch->envelope_timer = ch->envelope_pace;
         ch->volume = (ch->envelope & APU_CH_ENVELOPE_VOL) >> APU_CH_ENVELOPE_VOL_SHIFT;
         ch->lfsr = 0;
 
@@ -256,10 +254,12 @@ void noise_execute(gb_apu_noise_t *ch) {
         uint8_t clock_shift = (ch->rand & APU_CH4_RAND_CLK_SEL) >> APU_CH4_RAND_CLK_SEL_SHIFT;
         int timer_target = 4 * clock_div * (1 << clock_shift);
         bool lfsr_clock = false;
+
         if (ch->lfsr_timer >= timer_target) {
             ch->lfsr_timer = 0;
             lfsr_clock = true;
         }
+
         ch->lfsr_timer++;
 
         // LFSR
@@ -268,34 +268,29 @@ void noise_execute(gb_apu_noise_t *ch) {
             bool bit1 = (ch->lfsr & 0b10) >> 1;
             bool result = bit0 == bit1;
 
-            bool short_mode = ch->rand & APU_CH4_RAND_LFSR_WIDTH;
             ch->lfsr &= ~(1 << 15); // Clear bit
             ch->lfsr |= (1 << 15) * result; // Set bit
-            if (short_mode) {
+            if (ch->rand & APU_CH4_RAND_LFSR_WIDTH) { // Short mode
                 ch->lfsr &= ~(1 << 7); // Clear bit
                 ch->lfsr |= (1 << 7) * result; // Set bit
             }
+
             ch->lfsr = ch->lfsr >> 1;
 
             ch->sample = (ch->lfsr & 1) * ch->volume;
         }
 
         // Envelope
-        if ((ch->envelope & APU_CH_ENVELOPE_PACE) && apu.envelope_clock) {
+        if (ch->envelope_pace && apu.envelope_clock) {
             ch->envelope_timer -= 1;
             if (ch->envelope_timer <= 0) {
-                if (ch->envelope & APU_CH_ENVELOPE_DIR) {
+                if (ch->envelope_dir) {
                     if (ch->volume < 15) { ch->volume += 1; }
                 } else {
                     if (ch->volume > 0) { ch->volume -= 1; }
                 }
 
-                if (ch->volume <= 0) {
-                    apu.control &= ~APU_CONTROL_CH4;
-                    DEBUG_PRINTF_APU("CH4 ENVELOPE OFF!\n");
-                } else {
-                    ch->envelope_timer = (ch->envelope & APU_CH_ENVELOPE_PACE);
-                }
+                ch->envelope_timer = ch->envelope_pace;
             }
         }
 
@@ -340,7 +335,7 @@ bool apu_execute(uint8_t t) {
 
             // Mix
             float timer_target = (float)1048576 / (float)APU_SAMPLE_RATE;
-            if (apu.buffer_index_timer > timer_target) {
+            if (apu.buffer_index_timer >= timer_target) {
                 // Get samples and convert to output format
                 int16_t ch1_sample = apu.ch1.sample * (APU_SAMPLE_HIGH / 15);
                 int16_t ch2_sample = apu.ch2.sample * (APU_SAMPLE_HIGH / 15);
