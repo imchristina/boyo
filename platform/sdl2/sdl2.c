@@ -21,7 +21,8 @@ uint32_t sdl_col[4];
 
 uint64_t perf_count_freq = 0;
 uint64_t perf_count_start = 0;
-const float target_frametime = 16.666f;
+uint64_t perf_count_target = 0;
+const double target_frametime = 1000.0/60.0;
 
 void emu_halt(int sig) {
     printf("Emulation halting: %i\n", sig);
@@ -69,7 +70,7 @@ bool skip_frame = false;
 void frame_callback(uint8_t *buffer) {
     DEBUG_PRINTF("NEW FRAME\n");
 
-    static uint32_t sdl_fb[160*144*4];
+    static uint32_t sdl_fb[160*144];
 
     // Convert GB color to SDL 8-bit
     for (int i = 0; i < 160*144; i++) {
@@ -81,11 +82,15 @@ void frame_callback(uint8_t *buffer) {
     SDL_UpdateWindowSurface(win);
 
     // Limit framerate
-    uint64_t perf_count_end = SDL_GetPerformanceCounter();
-    float elapsed = (float)((perf_count_end - perf_count_start) * 1000) / perf_count_freq;
+    perf_count_target += (uint64_t)(target_frametime * perf_count_freq / 1000.0);
 
-    if (elapsed < target_frametime && !skip_frame) {
-        SDL_Delay((uint32_t)(target_frametime - elapsed));
+    uint64_t perf_count_end = SDL_GetPerformanceCounter();
+
+    if ((perf_count_end < perf_count_target) && !skip_frame) {
+        double ms_to_wait = (perf_count_target - perf_count_end) * 1000.0 / perf_count_freq;
+        SDL_Delay((uint32_t)ms_to_wait);
+    } else {
+        perf_count_target = perf_count_end;
     }
 
     perf_count_start = SDL_GetPerformanceCounter();
@@ -171,6 +176,7 @@ int main(int argc, char *argv[]) {
     // Initialize the framerate limiter
     perf_count_freq = SDL_GetPerformanceFrequency();
     perf_count_start = SDL_GetPerformanceCounter();
+    perf_count_target = SDL_GetPerformanceCounter();
 
     // Attach callbacks
     emu.frame_callback = frame_callback;
