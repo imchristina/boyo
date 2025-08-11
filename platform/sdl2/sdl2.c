@@ -102,7 +102,7 @@ void frame_callback(uint8_t *buffer) {
 
 void audio_callback(int16_t *buffer, int len) {
     bool underrun = SDL_GetQueuedAudioSize(audio_dev) < (len * sizeof(int16_t));
-    bool overrun = SDL_GetQueuedAudioSize(audio_dev) > (len * sizeof(int16_t) * 4);
+    bool overrun = SDL_GetQueuedAudioSize(audio_dev) > (len * sizeof(int16_t) * 8);
 
     if (underrun) { DEBUG_PRINTF("AUDIO UNDERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
     if (overrun) { DEBUG_PRINTF("AUDIO OVERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
