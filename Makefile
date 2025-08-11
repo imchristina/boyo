@@ -3,7 +3,7 @@ PLATFORM ?= sdl2
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -Iinclude -std=c23 -g
+CFLAGS = -Wall -Wextra -Iinclude -std=c23 -g -O3
 
 # Platform-specific flags
 ifeq ($(PLATFORM), sdl2)
