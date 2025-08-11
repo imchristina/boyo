@@ -24,6 +24,12 @@
 #define APU_PAN_LEFT_CH3    0b01000000
 #define APU_PAN_LEFT_CH4    0b10000000
 
+#define APU_VOLUME_RIGHT        0b00000111
+#define APU_VOLUME_VIN_RIGHT    0b00001000
+#define APU_VOLUME_LEFT         0b01110000
+#define APU_VOLUME_LEFT_SHIFT   4
+#define APU_VOLUME_VIN_LEFT     0b10000000
+
 #define APU_CH_LD_LENGTH       0b00111111
 #define APU_CH_LD_DUTY         0b11000000
 #define APU_CH_LD_DUTY_SHIFT   6
@@ -356,6 +362,12 @@ bool apu_execute(uint8_t t) {
                 *right += (apu.panning & APU_PAN_RIGHT_CH3) ? ch3_sample : 0;
                 *left += (apu.panning & APU_PAN_LEFT_CH4) ? ch4_sample : 0;
                 *right += (apu.panning & APU_PAN_RIGHT_CH4) ? ch4_sample : 0;
+
+                // Master volume
+                uint8_t volume_left = (apu.volume_vin & APU_VOLUME_LEFT) >> APU_VOLUME_LEFT_SHIFT;
+                uint8_t volume_right = apu.volume_vin & APU_VOLUME_RIGHT;
+                *left /= 16 - ((volume_left * 2) + 1);
+                *right /= 16 - ((volume_right * 2) + 1);
 
                 apu.buffer_index_timer -= timer_target;
                 apu.buffer_index += 2;
