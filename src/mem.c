@@ -25,7 +25,7 @@ uint8_t mem_io_read(uint8_t addr) {
     } else if ((addr >= 0x04) && (addr <= 0x07)) {
         return timer_io_read(addr);
     } else if (addr == 0x0F) {
-        return mem.iflag;
+        return mem.iflag | 0b11100000;
     } else if (addr <= 0x2F) {
         return apu_io_read(addr);
     } else if (addr <= 0x3F) {
