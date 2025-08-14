@@ -173,7 +173,7 @@ bool ppu_execute(uint8_t t) {
                     ppu.mode = PPU_MODE_OAM;
                 } else if (dot_x == 80) {
                     ppu.mode = PPU_MODE_DRAWING;
-                } else if (dot_x == 252) {
+                } else if (dot_x == 252+80) {
                     ppu.mode = PPU_MODE_HBLANK;
                 }
             } else if (dot_y == 144 && dot_x == 0) {
@@ -194,7 +194,9 @@ bool ppu_execute(uint8_t t) {
                     break;
                 case PPU_MODE_DRAWING:
                     ppu.lx = dot_x - 80;
-                    draw();
+                    if (ppu.lx < 160) {
+                        draw();
+                    }
                     break;
             }
 
