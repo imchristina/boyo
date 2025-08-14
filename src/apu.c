@@ -164,6 +164,12 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
             }
         }
 
+        // Envelope DAC disable
+        if (!(ch->envelope & (APU_CH_ENVELOPE_VOL | APU_CH_ENVELOPE_DIR))) {
+            apu.control &= ~ch_control;
+            DEBUG_PRINTF_APU("CH%d DAC OFF!\n", ch_num);
+        }
+
         // Length
         ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
         if (ch->length_timer >= 64) {
@@ -258,7 +264,14 @@ void noise_execute(gb_apu_noise_t *ch) {
         // LFSR clock
         uint8_t clock_div = ch->rand & APU_CH4_RAND_CLK_DIV;
         uint8_t clock_shift = (ch->rand & APU_CH4_RAND_CLK_SEL) >> APU_CH4_RAND_CLK_SEL_SHIFT;
-        int timer_target = 4 * clock_div * (1 << clock_shift);
+
+        int timer_target;
+        if (clock_div == 0) {
+            timer_target = 2 << clock_shift;
+        } else {
+            timer_target = (4 * clock_div) << clock_shift;
+        }
+
         bool lfsr_clock = false;
 
         if (ch->lfsr_timer >= timer_target) {
@@ -281,9 +294,9 @@ void noise_execute(gb_apu_noise_t *ch) {
                 ch->lfsr |= (1 << 7) * result; // Set bit
             }
 
-            ch->lfsr = ch->lfsr >> 1;
-
             ch->sample = (ch->lfsr & 1) * ch->volume;
+
+            ch->lfsr = ch->lfsr >> 1;
         }
 
         // Envelope
@@ -298,6 +311,12 @@ void noise_execute(gb_apu_noise_t *ch) {
 
                 ch->envelope_timer = ch->envelope_pace;
             }
+        }
+
+        // Envelope DAC disable
+        if (!(ch->envelope & (APU_CH_ENVELOPE_VOL | APU_CH_ENVELOPE_DIR))) {
+            apu.control &= ~APU_CONTROL_CH4;
+            DEBUG_PRINTF_APU("CH4 DAC OFF!\n");
         }
 
         // Length
