@@ -80,10 +80,8 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
 
     // Trigger
     if (ch->control & APU_CH_CONTROL_TRIGGER) {
-        // Set length timer if expired
-        if (ch->length_timer >= 64) {
-            ch->length_timer = ch->length_duty & APU_CH_LD_LENGTH;
-        }
+        // Set length timer (always, not just if expired PAN DOCS)
+        ch->length_timer = 64 - (ch->length_duty & APU_CH_LD_LENGTH);
 
         ch->sweep_timer = (ch->sweep & APU_CH1_SWEEP_PACE) >> APU_CH1_SWEEP_PACE_SHIFT;
         ch->period_timer = ch->period;
@@ -172,7 +170,7 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
 
         // Length
         ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
-        if (ch->length_timer >= 64) {
+        if (ch->length_timer == 0) {
             apu.control &= ~ch_control;
             DEBUG_PRINTF_APU("CH%d TIMER OFF!\n", ch_num);
         }
@@ -184,10 +182,7 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
 void wave_execute(gb_apu_wave_t *ch) {
     // Trigger
     if (ch->control & APU_CH_CONTROL_TRIGGER) {
-        // Set length timer if expired
-        if (ch->length_timer >= 64) {
-            ch->length_timer = ch->length & APU_CH_LD_LENGTH;
-        }
+        ch->length_timer = 255 - (ch->length & APU_CH_LD_LENGTH);
 
         ch->period_timer = ch->period;
 
@@ -224,7 +219,7 @@ void wave_execute(gb_apu_wave_t *ch) {
 
         // Length
         ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
-        if (ch->length_timer >= 64) {
+        if (ch->length_timer == 0) {
             apu.control &= ~APU_CONTROL_CH3;
             DEBUG_PRINTF_APU("CH3 TIMER OFF!\n");
         }
@@ -242,10 +237,7 @@ void wave_execute(gb_apu_wave_t *ch) {
 void noise_execute(gb_apu_noise_t *ch) {
     // Trigger
     if (ch->control & APU_CH_CONTROL_TRIGGER) {
-        // Set length timer if expired
-        if (ch->length_timer >= 64) {
-            ch->length_timer = ch->length & APU_CH_LD_LENGTH;
-        }
+        ch->length_timer = 63 - (ch->length & APU_CH_LD_LENGTH);
 
         ch->envelope_pace = (ch->envelope & APU_CH_ENVELOPE_PACE);
         ch->envelope_dir = (ch->envelope & APU_CH1_SWEEP_DIRECTION);
@@ -320,8 +312,8 @@ void noise_execute(gb_apu_noise_t *ch) {
         }
 
         // Length
-        ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
-        if (ch->length_timer >= 64) {
+        ch->length_timer -= apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
+        if (ch->length_timer == 0) {
             apu.control &= ~APU_CONTROL_CH4;
             DEBUG_PRINTF_APU("CH4 TIMER OFF!\n");
         }
