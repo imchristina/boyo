@@ -169,7 +169,7 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
         }
 
         // Length
-        ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
+        ch->length_timer -= apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
         if (ch->length_timer == 0) {
             apu.control &= ~ch_control;
             DEBUG_PRINTF_APU("CH%d TIMER OFF!\n", ch_num);
@@ -182,7 +182,7 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
 void wave_execute(gb_apu_wave_t *ch) {
     // Trigger
     if (ch->control & APU_CH_CONTROL_TRIGGER) {
-        ch->length_timer = 255 - (ch->length & APU_CH_LD_LENGTH);
+        ch->length_timer = 255 - ch->length;
 
         ch->period_timer = ch->period;
 
@@ -218,7 +218,7 @@ void wave_execute(gb_apu_wave_t *ch) {
         }
 
         // Length
-        ch->length_timer += apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
+        ch->length_timer -= apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
         if (ch->length_timer == 0) {
             apu.control &= ~APU_CONTROL_CH3;
             DEBUG_PRINTF_APU("CH3 TIMER OFF!\n");
