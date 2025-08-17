@@ -356,18 +356,12 @@ bool apu_execute(uint8_t t) {
             float timer_target = (float)1048576 / (float)APU_SAMPLE_RATE; // (M cycles)/(audio samples) per second
             timer_target *= 0.963; // WHAT IS THIS MAGIC NUMBER???
             if (apu.buffer_index_timer >= timer_target) {
-                // Get volume levels
-                int16_t ch1_volume = apu.ch1.volume;
-                int16_t ch2_volume = apu.ch2.volume;
-                int16_t ch3_volume = apu.ch3.volume;
-                int16_t ch4_volume = apu.ch4.volume;
-
                 // Get samples and convert to output format
                 int16_t sample_unit = (APU_SAMPLE_HIGH / 15);
-                int16_t ch1_sample = (apu.ch1.sample - (ch1_volume / 2)) * sample_unit;
-                int16_t ch2_sample = (apu.ch2.sample - (ch2_volume / 2)) * sample_unit;
-                int16_t ch3_sample = (apu.ch3.sample - (ch3_volume / 2)) * sample_unit;
-                int16_t ch4_sample = (apu.ch4.sample - (ch4_volume / 2)) * sample_unit;
+                int16_t ch1_sample = (apu.ch1.sample - (apu.ch1.volume / 2)) * sample_unit;
+                int16_t ch2_sample = (apu.ch2.sample - (apu.ch2.volume / 2)) * sample_unit;
+                int16_t ch3_sample = (apu.ch3.sample - (apu.ch3.volume / 2)) * sample_unit;
+                int16_t ch4_sample = (apu.ch4.sample - (apu.ch4.volume / 2)) * sample_unit;
 
                 // Write out samples and pan
                 int16_t *left = &apu.buffer[apu.buffer_index];
