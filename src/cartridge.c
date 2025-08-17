@@ -26,12 +26,16 @@ void cartridge_open_rom(char *path) {
 }
 
 int get_sav_size() {
-    int sav_size;
+    int sav_size = 0;
     switch (cartridge.ram_size) {
         case 0x02: sav_size = 0x2000; break;
         case 0x03: sav_size = 0x8000; break;
-        default: sav_size = 0; break;
     }
+
+    switch (cartridge.type) {
+        case 0x06: sav_size = 0x200; break; // MBC2+BATTERY
+    }
+
     return sav_size;
 }
 
@@ -91,6 +95,23 @@ uint8_t cartridge_read(uint16_t addr) {
                 }
             }
             break;
+        case 0x05: // MBC2
+        case 0x06: // MBC2+BATTERY
+            if (addr <= 0x3FFF) { // ROM Bank 0
+                return cartridge.rom[addr];
+            } else if (addr <= 0x7FFF) { // ROM bank 1+
+                uint8_t bank = cartridge.rom_bank;
+                if (bank == 0) { bank = 1; }
+
+                int bank_addr = 0x4000 * (bank - 1);
+                return cartridge.rom[addr+bank_addr];
+            } else if (addr >= 0xA000 && addr <= 0xBFFF) { // RAM
+                if (cartridge.ram_enable) {
+                    uint16_t ram_addr = addr - 0xA000;
+                    return cartridge.ram[ram_addr % 0x200] & 0xF0;
+                }
+            }
+            break;
         default:
             printf("Unknown cartridge type on read: 0x%X\n", cartridge.type);
             exit(1);
@@ -115,6 +136,30 @@ void cartridge_write(uint16_t addr, uint8_t data) {
                 cartridge.ram_bank = data & 0b00000011;
             } else if (addr <= 0x7FFF) { // Bank Mode Select
                 cartridge.bank_mode = data & 0b00000001;
+            } else if (addr >= 0xA000 && addr <= 0xBFFF) { // RAM
+                if (cartridge.ram_enable) {
+                    uint16_t ram_addr = addr - 0xA000;
+                    switch (cartridge.ram_size) {
+                        case 0x02: // 8KB Unbanked
+                            cartridge.ram[ram_addr] = data;
+                            break;
+                        case 0x03: // 32KB Banked
+                            uint16_t bank_addr = 0x2000 * cartridge.ram_bank;
+                            cartridge.ram[ram_addr+bank_addr] = data;
+                            break;
+                    }
+                }
+            }
+            break;
+        case 0x05: // MBC2
+        case 0x06: // MBC2+BATTERY
+            if (addr <= 0x3FFF) { // RAM Enable/ROM Bank Number
+                bool rom_mode = addr & 0b100000000;
+                if (rom_mode) {
+                    cartridge.rom_bank = data & 0b00011111;
+                } else {
+                    cartridge.ram_enable = (data & 0b00001111) == 0xA;
+                }
             } else if (addr >= 0xA000 && addr <= 0xBFFF) { // RAM
                 if (cartridge.ram_enable) {
                     uint16_t ram_addr = addr - 0xA000;
