@@ -32,6 +32,7 @@ typedef struct {
 
     uint8_t length_timer;
     int period_timer;
+    uint8_t volume;
     uint8_t wave_index;
     uint8_t sample;
 } gb_apu_wave_t;
