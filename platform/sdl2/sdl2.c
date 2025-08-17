@@ -61,6 +61,29 @@ void process_events() {
                     default: break;
                 }
                 break;
+            case SDL_CONTROLLERBUTTONDOWN:
+                switch (e.cbutton.button) {
+                    case SDL_CONTROLLER_BUTTON_A: joypad_down(JOYPAD_BUTTON_A); break;
+                    case SDL_CONTROLLER_BUTTON_B: joypad_down(JOYPAD_BUTTON_B); break;
+                    case SDL_CONTROLLER_BUTTON_START: joypad_down(JOYPAD_BUTTON_START); break;
+                    case SDL_CONTROLLER_BUTTON_BACK: joypad_down(JOYPAD_BUTTON_SELECT); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_UP: joypad_down(JOYPAD_DPAD_UP); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN: joypad_down(JOYPAD_DPAD_DOWN); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_LEFT: joypad_down(JOYPAD_DPAD_LEFT); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: joypad_down(JOYPAD_DPAD_RIGHT); break;
+                }
+                break;
+            case SDL_CONTROLLERBUTTONUP:
+                switch (e.cbutton.button) {
+                    case SDL_CONTROLLER_BUTTON_A: joypad_up(JOYPAD_BUTTON_A); break;
+                    case SDL_CONTROLLER_BUTTON_B: joypad_up(JOYPAD_BUTTON_B); break;
+                    case SDL_CONTROLLER_BUTTON_START: joypad_up(JOYPAD_BUTTON_START); break;
+                    case SDL_CONTROLLER_BUTTON_BACK: joypad_up(JOYPAD_BUTTON_SELECT); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_UP: joypad_up(JOYPAD_DPAD_UP); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN: joypad_up(JOYPAD_DPAD_DOWN); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_LEFT: joypad_up(JOYPAD_DPAD_LEFT); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: joypad_up(JOYPAD_DPAD_RIGHT); break;
+                }
             default: break;
         }
     }
@@ -125,7 +148,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Initialize SDL/Window/Surface
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER);
     win = SDL_CreateWindow("Boyo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160, 144, 0);
     surface = SDL_GetWindowSurface(win);
 
@@ -141,6 +164,12 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     SDL_PauseAudioDevice(audio_dev, 0);
+
+    // Initialize SDL controller
+    SDL_GameController *controller = NULL;
+    if (SDL_IsGameController(0)) { // 0 = first joystick index
+        controller = SDL_GameControllerOpen(0);
+    }
 
     // Attach termination signals to handler
     signal(SIGINT, emu_halt);
@@ -201,6 +230,7 @@ int main(int argc, char *argv[]) {
 
     SDL_DestroyWindow(win);
     SDL_CloseAudioDevice(audio_dev);
+    if (controller) SDL_GameControllerClose(controller);
     SDL_Quit();
     return 0;
 }
