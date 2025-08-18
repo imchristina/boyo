@@ -2,7 +2,7 @@
 #define CARTRIDGE_H
 
 typedef struct {
-    uint8_t rom[1000000];
+    uint8_t rom[8000000];
     uint8_t ram[0x8000];
 
     char title[16];

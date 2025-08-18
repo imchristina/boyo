@@ -13,7 +13,7 @@ void cartridge_open_rom(char *path) {
         exit(1);
     }
 
-    fread(cartridge.rom, 1, 1000000, rom);
+    fread(cartridge.rom, 1, 8000000, rom);
     fclose(rom);
 
     // Decode cartridge header
@@ -117,6 +117,7 @@ uint8_t cartridge_read(uint16_t addr) {
                 }
             }
             break;
+        case 0x10: // MBC3+TIMER+RAM+BATTERY
         case 0x11: // MBC3
         case 0x12: // MBC3+RAM
         case 0x13: // MBC3+RAM+BATTERY
@@ -198,6 +199,7 @@ void cartridge_write(uint16_t addr, uint8_t data) {
                 }
             }
             break;
+        case 0x10: // MBC3+TIMER+RAM+BATTERY
         case 0x11: // MBC3
         case 0x12: // MBC3+RAM
         case 0x13: // MBC3+RAM+BATTERY
