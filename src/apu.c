@@ -169,8 +169,9 @@ void pulse_execute(gb_apu_pulse_t *ch, int ch_num) {
         }
 
         // Length
-        ch->length_timer -= apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
-        if (ch->length_timer == 0) {
+        bool length_enable = ch->control & APU_CH_CONTROL_LENGTH;
+        ch->length_timer -= apu.length_clock && length_enable;
+        if (ch->length_timer == 0 && length_enable) {
             apu.control &= ~ch_control;
             DEBUG_PRINTF_APU("CH%d TIMER OFF!\n", ch_num);
         }
@@ -220,8 +221,9 @@ void wave_execute(gb_apu_wave_t *ch) {
         }
 
         // Length
-        ch->length_timer -= apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
-        if (ch->length_timer == 0) {
+        bool length_enable = ch->control & APU_CH_CONTROL_LENGTH;
+        ch->length_timer -= apu.length_clock && length_enable;
+        if (ch->length_timer == 0 && length_enable) {
             apu.control &= ~APU_CONTROL_CH3;
             DEBUG_PRINTF_APU("CH3 TIMER OFF!\n");
         }
@@ -314,8 +316,9 @@ void noise_execute(gb_apu_noise_t *ch) {
         }
 
         // Length
-        ch->length_timer -= apu.length_clock && (ch->control & APU_CH_CONTROL_LENGTH);
-        if (ch->length_timer == 0) {
+        bool length_enable = ch->control & APU_CH_CONTROL_LENGTH;
+        ch->length_timer -= apu.length_clock && length_enable;
+        if (ch->length_timer == 0 && length_enable) {
             apu.control &= ~APU_CONTROL_CH4;
             DEBUG_PRINTF_APU("CH4 TIMER OFF!\n");
         }
