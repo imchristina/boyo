@@ -4,6 +4,7 @@
 #define EMU_EVENT_NONE  0b00
 #define EMU_EVENT_FRAME 0b01
 #define EMU_EVENT_AUDIO 0b10
+#define EMU_EVENT_ANY   0b11
 
 typedef void (*emu_frame_callback_t)(uint8_t *buffer);
 typedef void (*emu_audio_callback_t)(int16_t *buffer, int len);
