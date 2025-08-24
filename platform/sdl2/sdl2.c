@@ -119,8 +119,6 @@ void frame_callback(uint8_t *buffer) {
     perf_count_start = SDL_GetPerformanceCounter();
 
     skip_frame = false;
-
-    process_events();
 }
 
 void audio_callback(int16_t *buffer, int len) {
@@ -220,8 +218,10 @@ int main(int argc, char *argv[]) {
         } else if (emu.apu_enabled) {
             emu_run_to(EMU_EVENT_AUDIO);
         } else {
-            emu_run_to(EMU_EVENT_NONE);
+            emu_run_to(EMU_EVENT_ANY);
         }
+
+        process_events();
     }
 
     // Append .sav to rom path and save cartridge ram
