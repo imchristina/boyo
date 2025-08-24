@@ -11,8 +11,8 @@ typedef struct {
     uint8_t ram_size;
 
     bool ram_enable;
-    uint8_t rom_bank;
-    uint8_t ram_bank;
+    uint16_t rom_bank;
+    uint16_t ram_bank;
     bool bank_mode;
 } gb_cartridge_t;
 
