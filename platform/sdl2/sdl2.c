@@ -102,23 +102,9 @@ void frame_callback(uint8_t *buffer) {
 
     memcpy(surface->pixels, sdl_fb, 160*144*4);
 
-    SDL_UpdateWindowSurface(win);
-
-    // Limit framerate
-    perf_count_target += (uint64_t)(target_frametime * perf_count_freq / 1000.0);
-
-    uint64_t perf_count_end = SDL_GetPerformanceCounter();
-
-    if ((perf_count_end < perf_count_target) && !skip_frame) {
-        double ms_to_wait = (perf_count_target - perf_count_end) * 1000.0 / perf_count_freq;
-        SDL_Delay((uint32_t)ms_to_wait);
-    } else {
-        perf_count_target = perf_count_end;
+    if (!skip_frame) {
+        SDL_UpdateWindowSurface(win);
     }
-
-    perf_count_start = SDL_GetPerformanceCounter();
-
-    skip_frame = false;
 }
 
 void audio_callback(int16_t *buffer, int len) {
@@ -215,6 +201,22 @@ int main(int argc, char *argv[]) {
     while (emu.running) {
         if (emu.ppu_enabled) {
             emu_run_to(EMU_EVENT_FRAME);
+
+            // Limit framerate
+            perf_count_target += (uint64_t)(target_frametime * perf_count_freq / 1000.0);
+
+            uint64_t perf_count_end = SDL_GetPerformanceCounter();
+
+            if ((perf_count_end < perf_count_target) && !skip_frame) {
+                double ms_to_wait = (perf_count_target - perf_count_end) * 1000.0 / perf_count_freq;
+                SDL_Delay((uint32_t)ms_to_wait);
+            } else {
+                perf_count_target = perf_count_end;
+            }
+
+            perf_count_start = SDL_GetPerformanceCounter();
+
+            skip_frame = false;
         } else if (emu.apu_enabled) {
             emu_run_to(EMU_EVENT_AUDIO);
         } else {
