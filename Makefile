@@ -6,11 +6,14 @@ CC = gcc
 CFLAGS = -Wall -Wextra -Iinclude -std=c23 -g -O3
 
 # Platform-specific flags
-ifeq ($(PLATFORM), sdl2)
-    CFLAGS_PLATFORM = $(CFLAGS) $(shell pkg-config --cflags sdl2)
-    LDFLAGS_PLATFORM = $(shell pkg-config --libs sdl2)
+ifeq ($(PLATFORM), null)
+	CFLAGS_PLATFORM = $(CFLAGS)
+	LDFLAGS_PLATFORM = $(LDFLAGS)
+else ifeq ($(PLATFORM), sdl2)
+	CFLAGS_PLATFORM = $(CFLAGS) $(shell pkg-config --cflags sdl2)
+	LDFLAGS_PLATFORM = $(shell pkg-config --libs sdl2)
 else
-    $(error Unknown PLATFORM '$(PLATFORM)'. Supported: sdl2)
+$(error Unknown PLATFORM '$(PLATFORM)'. Supported: sdl2)
 endif
 
 # Directories
