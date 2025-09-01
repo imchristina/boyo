@@ -61,8 +61,12 @@ void mem_io_write(uint8_t addr, uint8_t data) {
 }
 
 uint8_t mem_read(uint16_t addr) {
-    if ((addr < 256) && !mem.bootrom_disable) {
+    if (!mem.bootrom_disable && (addr <= 0x00FF)) {
         return mem.bootrom[addr];
+#ifdef CGB
+    } else if (!mem.bootrom_disable && (addr >= 0x0200) && (addr <= 0x08FF)) {
+        return mem.bootrom[addr];
+#endif
     } else if (addr <= 0x7FFF) {
         return cartridge_read(addr);
     } else if (addr <= 0x9FFF) {
@@ -133,7 +137,7 @@ void mem_open_bootrom(char *path) {
         exit(1);
     }
 
-    fread(mem.bootrom, 1, 256, rom);
+    fread(mem.bootrom, 1, BOOTROM_SIZE, rom);
     fclose(rom);
 }
 

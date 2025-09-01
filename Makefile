@@ -9,6 +9,10 @@ ifdef DEBUG_PRINT
 	CFLAGS += -DDEBUG_PRINT=$(DEBUG_PRINT)
 endif
 
+ifeq ($(CGB), 1)
+	CFLAGS += -DCGB
+endif
+
 # Platform-specific flags
 ifeq ($(PLATFORM), null)
 	CFLAGS_PLATFORM = $(CFLAGS)

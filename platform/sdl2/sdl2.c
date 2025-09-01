@@ -179,7 +179,11 @@ int main(int argc, char *argv[]) {
     save_path[i++] = 0;
 
     // Open boot/game roms
+#ifdef CGB
+    mem_open_bootrom("cgb_boot.bin");
+#else
     mem_open_bootrom("dmg_boot.bin");
+#endif
     cartridge_open_rom(argv[1]);
     cartridge_open_ram(save_path);
 

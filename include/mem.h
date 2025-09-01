@@ -11,8 +11,14 @@
 #define INT_SERIAL  0b00001000
 #define INT_JOYPAD  0b00010000
 
+#ifdef CGB
+    #define BOOTROM_SIZE 2048
+#else
+    #define BOOTROM_SIZE 256
+#endif
+
 typedef struct {
-    uint8_t bootrom[256];
+    uint8_t bootrom[BOOTROM_SIZE];
     uint8_t vram[0x2000];
     uint8_t wram[0x2000];
     uint8_t oam[0xA0];
