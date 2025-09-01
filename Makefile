@@ -5,7 +5,7 @@ PLATFORM ?= sdl2
 CC = gcc
 CFLAGS = -Wall -Wextra -Iinclude -std=c23 -g -O3
 
-ifeq ($(DEBUG_PRINT), 1)
+ifdef DEBUG_PRINT
 	CFLAGS += -DDEBUG_PRINT=$(DEBUG_PRINT)
 endif
 
