@@ -263,7 +263,7 @@ int execute_prefix(uint8_t op) {
             exit(1);
     }
 
-    if (hl_mem) {
+    if (hl_mem && ((op_high < 4) || (op_high > 7))) {
         mem_write_next(reg_hl_read(), n8);
     }
 
