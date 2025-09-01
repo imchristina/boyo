@@ -8,10 +8,18 @@
 #define ANSI_BLUE_BOLD "\x1b[1;34m"
 #define ANSI_CLEAR "\x1b[0m"
 
-#define DEBUG_PRINTF(...) //printf(__VA_ARGS__)
-#define DEBUG_PRINTF_CPU(...) //printf(__VA_ARGS__)
-#define DEBUG_PRINTF_MEM(...) //printf(__VA_ARGS__)
-#define DEBUG_PRINTF_PPU(...) //printf(__VA_ARGS__)
-#define DEBUG_PRINTF_APU(...) //printf(__VA_ARGS__)
+#ifdef DEBUG_PRINT
+    #define DEBUG_PRINTF(...) printf(__VA_ARGS__)
+    #define DEBUG_PRINTF_CPU(...) printf(__VA_ARGS__)
+    #define DEBUG_PRINTF_MEM(...) printf(__VA_ARGS__)
+    #define DEBUG_PRINTF_PPU(...) printf(__VA_ARGS__)
+    #define DEBUG_PRINTF_APU(...) printf(__VA_ARGS__)
+#else
+    #define DEBUG_PRINTF(...) //printf(__VA_ARGS__)
+    #define DEBUG_PRINTF_CPU(...) //printf(__VA_ARGS__)
+    #define DEBUG_PRINTF_MEM(...) //printf(__VA_ARGS__)
+    #define DEBUG_PRINTF_PPU(...) //printf(__VA_ARGS__)
+    #define DEBUG_PRINTF_APU(...) //printf(__VA_ARGS__)*/
+#endif
 
 #endif

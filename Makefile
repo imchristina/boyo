@@ -5,6 +5,10 @@ PLATFORM ?= sdl2
 CC = gcc
 CFLAGS = -Wall -Wextra -Iinclude -std=c23 -g -O3
 
+ifeq ($(DEBUG_PRINT), 1)
+	CFLAGS += -DDEBUG_PRINT=$(DEBUG_PRINT)
+endif
+
 # Platform-specific flags
 ifeq ($(PLATFORM), null)
 	CFLAGS_PLATFORM = $(CFLAGS)
