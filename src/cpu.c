@@ -263,13 +263,10 @@ int execute_prefix(uint8_t op) {
             exit(1);
     }
 
-    if (hl_mem && ((op_high < 4) || (op_high > 7))) {
-        mem_write_next(reg_hl_read(), n8);
-    }
-
     int t = 8;
     if (hl_mem && ((op_high < 4) || (op_high > 7))) {
         t = 16; // Non-bit HL instruction
+        mem_write_next(reg_hl_read(), n8);
     } else if (hl_mem) {
         t = 12; // Bit HL instruction
     }
