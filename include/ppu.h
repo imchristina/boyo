@@ -3,6 +3,12 @@
 
 #include <stdint.h>
 
+#ifdef CGB
+#define VRAM_SIZE 0x4000
+#else
+#define VRAM_SIZE 0x2000
+#endif
+
 typedef struct {
     // MMIO Registers
     uint8_t lcdc; // LCD control
@@ -18,6 +24,12 @@ typedef struct {
     uint8_t wy; // Window Y position
     uint8_t wx; // Window X position plus 7
 
+#ifdef CGB
+    bool vram_bank;
+#endif
+
+    uint8_t vram[VRAM_SIZE];
+
     int dot; // Current dot in frame
     uint8_t mode;
     uint8_t lx; // Virtual lx for decoupling with dot while rendering
@@ -31,5 +43,7 @@ bool ppu_execute(uint8_t t);
 bool ppu_enabled();
 uint8_t ppu_io_read(uint8_t addr);
 void ppu_io_write(uint8_t addr, uint8_t data);
+uint8_t ppu_vram_read(uint16_t addr);
+void ppu_vram_write(uint16_t addr, uint8_t data);
 
 #endif

@@ -13,6 +13,11 @@
 
 #define MEM_WRITE_NEXT_LEN 4
 
+#ifdef CGB
+#include "cgb.h"
+#define CGB_WRAM_BANK 0b00000111
+#endif
+
 mem_t mem = {};
 
 uint8_t mem_io_read(uint8_t addr) {
@@ -30,8 +35,14 @@ uint8_t mem_io_read(uint8_t addr) {
         return apu_io_read(addr);
     } else if (addr <= 0x3F) {
         return apu_wave_read(addr);
-    } else if (addr <= 0x4B) {
+    } else if (addr <= 0x4B || addr == 0x4F) {
         return ppu_io_read(addr);
+#ifdef CGB
+    } else if (addr == 0x4D) {
+        return cgb_io_read(addr);
+    } else if (addr == 0x70) {
+        return mem.wram_bank & ~CGB_WRAM_BANK;
+#endif
     } else {
         return 0;
     }
@@ -52,11 +63,17 @@ void mem_io_write(uint8_t addr, uint8_t data) {
         apu_io_write(addr, data);
     } else if (addr <= 0x3F) {
         apu_wave_write(addr, data);
-    } else if (addr <= 0x4B) {
+    } else if (addr <= 0x4B || addr == 0x4F) {
         ppu_io_write(addr, data);
     } else if ((addr == 0x50) && data) {
         DEBUG_PRINTF_MEM("BOOTROM DISABLED\n");
         mem.bootrom_disable = 1;
+#ifdef CGB
+    } else if (addr == 0x4D) {
+        cgb_io_write(addr, data);
+    } else if (addr == 0x70) {
+        mem.wram_bank = data;
+#endif
     }
 }
 
@@ -70,11 +87,21 @@ uint8_t mem_read(uint16_t addr) {
     } else if (addr <= 0x7FFF) {
         return cartridge_read(addr);
     } else if (addr <= 0x9FFF) {
-        return mem.vram[addr-0x8000];
+        return ppu_vram_read(addr);
     } else if (addr <= 0xBFFF) {
         return cartridge_read(addr);
     } else if (addr <= 0xDFFF) {
+#ifdef CGB
+        if (addr <= 0xCFFF) {
+            return mem.wram[addr-0xC000];
+        } else {
+            uint8_t wram_bank = mem.wram_bank ? mem.wram_bank-1 : 0;
+            wram_bank &= CGB_WRAM_BANK;
+            return mem.wram[(addr-0xC000)+(wram_bank * 0x1000)];
+        }
+#else
         return mem.wram[addr-0xC000];
+#endif
     } else if (addr <= 0xFDFF) {
         return mem.wram[addr-0xE000];
     } else if (addr <= 0xFE9F) {
@@ -98,7 +125,7 @@ void mem_write(uint16_t addr, uint8_t data) {
     if (addr <= 0x7FFF) {
         cartridge_write(addr, data);
     } else if (addr <= 0x9FFF) {
-        mem.vram[addr-0x8000] = data;
+        ppu_vram_write(addr, data);
     } else if (addr <= 0xBFFF) {
         cartridge_write(addr, data);
     } else if (addr <= 0xDFFF) {

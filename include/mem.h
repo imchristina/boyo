@@ -13,18 +13,23 @@
 
 #ifdef CGB
     #define BOOTROM_SIZE 2048
+    #define WRAM_SIZE 0x8000
 #else
     #define BOOTROM_SIZE 256
+    #define WRAM_SIZE 0x2000
 #endif
 
 typedef struct {
     uint8_t bootrom[BOOTROM_SIZE];
-    uint8_t vram[0x2000];
-    uint8_t wram[0x2000];
+    uint8_t wram[WRAM_SIZE];
     uint8_t oam[0xA0];
     uint8_t iflag;
     uint8_t hram[0x7F];
     uint8_t ie;
+
+#ifdef CGB
+    uint8_t wram_bank;
+#endif
 
     bool bootrom_disable;
 } mem_t;

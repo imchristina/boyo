@@ -360,7 +360,7 @@ uint8_t cpu_execute() {
     bool interrupt = cpu.ime && (mem.ie & mem.iflag);
 
     // Compute state mutation
-    if (!interrupt && !cpu.halt) { // No interrupt triggered
+    if (!interrupt && !cpu.halt && !cpu.stop) { // No interrupt triggered
         switch(cpu.op) {
             case 0x00: // NOP
                 t = 4;
@@ -1826,7 +1826,6 @@ uint8_t cpu_execute() {
         DEBUG_PRINTF_CPU("INT 0b%08b ", mem.iflag);
 
         cpu_next.halt = 0;
-        cpu_next.stop = 0;
         cpu_next.ime = 0;
         t = 20;
 
@@ -1879,4 +1878,8 @@ void cpu_writeback() {
         cpu_next.ime_pending = 0;
     }
     mem_writeback();
+}
+
+void cpu_continue() {
+    cpu_next.stop = 0;
 }

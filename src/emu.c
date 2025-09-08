@@ -11,6 +11,10 @@
 #include "apu.h"
 #include "log.h"
 
+#ifdef CGB
+#include "cgb.h"
+#endif
+
 gb_emu_t emu = {};
 
 int emu_execute() {
@@ -25,6 +29,10 @@ int emu_execute() {
     bool new_audio = apu_execute(t);
     timer_execute(t);
     serial_execute(t);
+
+#ifdef CGB
+    cgb_execute(t);
+#endif
 
     int result = EMU_EVENT_NONE;
 

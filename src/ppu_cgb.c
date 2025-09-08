@@ -1,10 +1,11 @@
-#ifndef CGB
+#ifdef CGB
 
 #include <stdint.h>
 
 #include "ppu.h"
 #include "mem.h"
 #include "log.h"
+#include "cgb.h"
 
 #define PPU_MODE_HBLANK     0
 #define PPU_MODE_VBLANK     1
@@ -35,22 +36,18 @@
 
 ppu_t ppu = {};
 
-static uint8_t vram_read(uint16_t addr) {
-    return ppu.vram[addr - 0x8000];
-}
-
 static uint8_t tile_pixel(uint8_t x, uint8_t y, uint8_t tile_id, bool bg_win) {
     // Get tile data address
     uint16_t tile_address;
     if (!bg_win || (ppu.lcdc & LCDC_BG_WIN_TILE_DATA)) {
-        tile_address = 0x8000 + (tile_id * 16);
+        tile_address = (tile_id * 16);
     } else {
-        tile_address = 0x9000 + ((int8_t)tile_id * 16);
+        tile_address = 0x1000 + ((int8_t)tile_id * 16);
     }
 
     // Get the high/low bytes
-    uint8_t byte_l = vram_read(tile_address + (y * 2));
-    uint8_t byte_h = vram_read(tile_address + 1 + (y * 2));
+    uint8_t byte_l = ppu.vram[tile_address + (y * 2)];
+    uint8_t byte_h = ppu.vram[tile_address + 1 + (y * 2)];
 
     // Get each bit
     bool h = (byte_h >> (7 - x)) & 1;
@@ -75,10 +72,10 @@ static void draw() {
         int y = (ppu.ly + ppu.scy) % 256;
 
         // Get tile map area
-        uint16_t tile_map_addr = (ppu.lcdc & LCDC_BG_TILEMAP) ? 0x9C00 : 0x9800;
+        uint16_t tile_map_addr = (ppu.lcdc & LCDC_BG_TILEMAP) ? 0x1C00 : 0x1800;
 
         // Obtain tile index
-        uint8_t tile_id = vram_read(((y/8) * 32 + (x/8)) + tile_map_addr);
+        uint8_t tile_id = ppu.vram[((y/8) * 32 + (x/8)) + tile_map_addr];
 
         pixel_index_bg_win = tile_pixel(x % 8, y % 8, tile_id, 1);
         pixel_color = map_palette(ppu.bgp, pixel_index_bg_win);
@@ -92,10 +89,10 @@ static void draw() {
             int y = ppu.ly - ppu.wy;
 
             // Get tile map area
-            uint16_t tile_map_addr = (ppu.lcdc & LCDC_WIN_TILEMAP) ? 0x9C00 : 0x9800;
+            uint16_t tile_map_addr = (ppu.lcdc & LCDC_WIN_TILEMAP) ? 0x1C00 : 0x1800;
 
             // Obtain tile index
-            uint8_t tile_id = vram_read(((y/8) * 32 + (x/8)) + tile_map_addr);
+            uint8_t tile_id = ppu.vram[((y/8) * 32 + (x/8)) + tile_map_addr];
 
             pixel_index_bg_win = tile_pixel(x % 8, y % 8, tile_id, 1);
             pixel_color = map_palette(ppu.bgp, pixel_index_bg_win);
@@ -153,6 +150,10 @@ static void draw() {
 bool ppu_execute(uint8_t t) {
     // Do one dot per t
     bool new_frame = false;
+
+    if (cgb_speed() == CGB_SPEED_DOUBLE) {
+        t /= 2;
+    }
 
     if (ppu.lcdc & LCDC_PPU_ENABLE) {
         for (int i = 0; i < t; i++) {
@@ -249,6 +250,7 @@ uint8_t ppu_io_read(uint8_t addr) {
         case 0x49: return ppu.obp1; break;
         case 0x4A: return ppu.wy; break;
         case 0x4B: return ppu.wx; break;
+        case 0x4F: return ppu.vram_bank; break;
         default:
             printf("Bad PPU IO read");
             return 0;
@@ -270,6 +272,7 @@ void ppu_io_write(uint8_t addr, uint8_t data) {
         case 0x49: ppu.obp1 = data; break;
         case 0x4A: ppu.wy = data; break;
         case 0x4B: ppu.wx = data; break;
+        case 0x4F: ppu.vram_bank = data & 1; break;
         default:
             printf("Bad PPU IO write");
             break;
@@ -277,11 +280,13 @@ void ppu_io_write(uint8_t addr, uint8_t data) {
 }
 
 uint8_t ppu_vram_read(uint16_t addr) {
-    return ppu.vram[addr-0x8000];
+    addr -= 0x8000 - (ppu.vram_bank * 0x2000);
+    return ppu.vram[addr];
 }
 
 void ppu_vram_write(uint16_t addr, uint8_t data) {
-    ppu.vram[addr-0x8000] = data;
+    addr -= 0x8000 - (ppu.vram_bank * 0x2000);
+    ppu.vram[addr] = data;
 }
 
 #endif

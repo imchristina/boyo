@@ -27,5 +27,6 @@ typedef struct {
 void cpu_reset();
 uint8_t cpu_execute();
 void cpu_writeback();
+void cpu_continue();
 
 #endif

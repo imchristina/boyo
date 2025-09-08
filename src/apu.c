@@ -6,6 +6,10 @@
 #include "timer.h"
 #include "log.h"
 
+#ifdef CGB
+#include "cgb.h"
+#endif
+
 #define APU_SAMPLE_HIGH INT16_MAX / 2
 
 #define APU_CONTROL_CH1     0b00000001
@@ -332,11 +336,27 @@ bool apu_execute(uint8_t t) {
 
     // Step on M cycles
     for (int m = 0; m < t/4; m++) {
+#ifdef CGB
+        static bool half_timer = false;
+        if (cgb_speed() == CGB_SPEED_DOUBLE) {
+            half_timer = !half_timer;
+        } else {
+            half_timer = true;
+        }
+        if (half_timer && (apu.control & APU_CONTROL_AUDIO)) {
+#else
         if (apu.control & APU_CONTROL_AUDIO) {
+#endif
             // Clocks
 
             // DIV_APU is updated on DIV bit 4 going low
-            apu.div_clock = (timer.div >> 4) & 1;
+            int div_shift = 4;
+#ifdef CGB
+            if (cgb_speed() == CGB_SPEED_DOUBLE) {
+                div_shift = 5;
+            }
+#endif
+            apu.div_clock = (timer.div >> div_shift) & 1;
             apu.div_apu += !apu.div_clock && apu.div_clock_last;
             apu.div_clock_last = apu.div_clock;
 
