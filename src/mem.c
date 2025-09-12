@@ -15,6 +15,7 @@
 
 #ifdef CGB
 #include "cgb.h"
+#include "vdma.h"
 #define CGB_WRAM_BANK 0b00000111
 #endif
 
@@ -35,11 +36,13 @@ uint8_t mem_io_read(uint8_t addr) {
         return apu_io_read(addr);
     } else if (addr <= 0x3F) {
         return apu_wave_read(addr);
-    } else if (addr <= 0x4B || addr == 0x4F) {
+    } else if (addr <= 0x4B || addr == 0x4F || (addr >= 0x68 && addr <= 0x6B)) {
         return ppu_io_read(addr);
 #ifdef CGB
     } else if (addr == 0x4D) {
         return cgb_io_read(addr);
+    } else if (addr >= 0x51 && addr <= 0x55) {
+        return vdma_io_read(addr);
     } else if (addr == 0x70) {
         return mem.wram_bank & ~CGB_WRAM_BANK;
 #endif
@@ -63,7 +66,7 @@ void mem_io_write(uint8_t addr, uint8_t data) {
         apu_io_write(addr, data);
     } else if (addr <= 0x3F) {
         apu_wave_write(addr, data);
-    } else if (addr <= 0x4B || addr == 0x4F) {
+    } else if (addr <= 0x4B || addr == 0x4F || (addr >= 0x68 && addr <= 0x6B)) {
         ppu_io_write(addr, data);
     } else if ((addr == 0x50) && data) {
         DEBUG_PRINTF_MEM("BOOTROM DISABLED\n");
@@ -71,6 +74,8 @@ void mem_io_write(uint8_t addr, uint8_t data) {
 #ifdef CGB
     } else if (addr == 0x4D) {
         cgb_io_write(addr, data);
+    } else if (addr >= 0x51 && addr <= 0x55) {
+        vdma_io_write(addr, data);
     } else if (addr == 0x70) {
         mem.wram_bank = data;
 #endif
@@ -129,7 +134,17 @@ void mem_write(uint16_t addr, uint8_t data) {
     } else if (addr <= 0xBFFF) {
         cartridge_write(addr, data);
     } else if (addr <= 0xDFFF) {
+#ifdef CGB
+        if (addr <= 0xCFFF) {
+            mem.wram[addr-0xC000] = data;
+        } else {
+            uint8_t wram_bank = mem.wram_bank ? mem.wram_bank-1 : 0;
+            wram_bank &= CGB_WRAM_BANK;
+            mem.wram[(addr-0xC000)+(wram_bank * 0x1000)] = data;
+        }
+#else
         mem.wram[addr-0xC000] = data;
+#endif
     } else if (addr <= 0xFDFF) {
         mem.wram[addr-0xE000] = data;
     } else if (addr <= 0xFE9F) {

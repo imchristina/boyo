@@ -29,20 +29,41 @@
 #define STAT_LYC_INT        0b01000000
 #define STAT_UNUSED         0b10000000
 
+#define OBJ_CGB_PALLETE 0b00000111
+#define OBJ_BANK        0b00001000
 #define OBJ_DMG_PALETTE 0b00010000
 #define OBJ_X_FLIP      0b00100000
 #define OBJ_Y_FLIP      0b01000000
 #define OBJ_PRIORITY    0b10000000
 
+#define BG_ATTR_PALETTE     0b00000111
+#define BG_ATTR_BANK        0b00001000
+#define BG_ATTR_UNUSED      0b00010000
+#define BG_ATTR_X_FLIP      0b00100000
+#define BG_ATTR_Y_FLIP      0b01000000
+#define BG_ATTR_PRIORITY    0b10000000
+
+#define PI_ADDRESS    0b00111111
+#define PI_UNUSED     0b01000000
+#define PI_INCREMENT  0b10000000
+
+#define RGB555_RED      0
+#define RGB555_GREEN    5
+#define RGB555_BLUE     10
+
 ppu_t ppu = {};
 
-static uint8_t tile_pixel(uint8_t x, uint8_t y, uint8_t tile_id, bool bg_win) {
+uint8_t tile_pixel(uint8_t x, uint8_t y, uint8_t tile_id, bool bg_win, bool bank) {
     // Get tile data address
     uint16_t tile_address;
     if (!bg_win || (ppu.lcdc & LCDC_BG_WIN_TILE_DATA)) {
         tile_address = (tile_id * 16);
     } else {
         tile_address = 0x1000 + ((int8_t)tile_id * 16);
+    }
+
+    if (bank) {
+        tile_address += 0x2000;
     }
 
     // Get the high/low bytes
@@ -57,12 +78,26 @@ static uint8_t tile_pixel(uint8_t x, uint8_t y, uint8_t tile_id, bool bg_win) {
     return (h << 1) + l;
 }
 
-static uint8_t map_palette(uint8_t palette, uint8_t index) {
-    return (palette >> (index * 2)) & 0b00000011;
+uint16_t map_palette_bg(uint8_t palette, uint8_t index) {
+    // Get the palette address
+    uint8_t address = (palette * 8) + (index * 2);
+    // Combine the high and low bytes at the address
+    uint16_t color = ppu.bgpd[address] | (ppu.bgpd[address+1] << 8);
+    // Return the value
+    return color;
 }
 
-static void draw() {
-    uint8_t pixel_color = 0;
+uint16_t map_palette_obj(uint8_t palette, uint8_t index) {
+    // Get the palette address
+    uint8_t address = (palette * 8) + (index * 2);
+    // Combine the high and low bytes at the address
+    uint16_t color = ppu.obpd[address] | (ppu.obpd[address+1] << 8);
+    // Return the value
+    return color;
+}
+
+void draw() {
+    uint16_t pixel_color = 0;
     uint8_t pixel_index_bg_win = 0;
 
     // Background
@@ -75,10 +110,23 @@ static void draw() {
         uint16_t tile_map_addr = (ppu.lcdc & LCDC_BG_TILEMAP) ? 0x1C00 : 0x1800;
 
         // Obtain tile index
-        uint8_t tile_id = ppu.vram[((y/8) * 32 + (x/8)) + tile_map_addr];
+        uint16_t tile_address = ((y/8) * 32 + (x/8)) + tile_map_addr;
+        uint8_t tile_id = ppu.vram[tile_address];
 
-        pixel_index_bg_win = tile_pixel(x % 8, y % 8, tile_id, 1);
-        pixel_color = map_palette(ppu.bgp, pixel_index_bg_win);
+        // Get BG map attributes
+        uint8_t attributes = ppu.vram[tile_address + 0x2000];
+        bool tile_bank = attributes & BG_ATTR_BANK;
+
+        if (attributes & BG_ATTR_X_FLIP) {
+            x = 7 - (x % 8);
+        }
+
+        if (attributes & BG_ATTR_Y_FLIP) {
+            y = 7 - (y % 8);
+        }
+
+        pixel_index_bg_win = tile_pixel(x % 8, y % 8, tile_id, 1, tile_bank);
+        pixel_color = map_palette_bg(attributes & BG_ATTR_PALETTE, pixel_index_bg_win);
     }
 
     // Window
@@ -92,10 +140,23 @@ static void draw() {
             uint16_t tile_map_addr = (ppu.lcdc & LCDC_WIN_TILEMAP) ? 0x1C00 : 0x1800;
 
             // Obtain tile index
-            uint8_t tile_id = ppu.vram[((y/8) * 32 + (x/8)) + tile_map_addr];
+            uint16_t tile_address = ((y/8) * 32 + (x/8)) + tile_map_addr;
+            uint8_t tile_id = ppu.vram[tile_address];
 
-            pixel_index_bg_win = tile_pixel(x % 8, y % 8, tile_id, 1);
-            pixel_color = map_palette(ppu.bgp, pixel_index_bg_win);
+            // Get BG map attributes
+            uint8_t attributes = ppu.vram[tile_address + 0x2000];
+            bool tile_bank = attributes & BG_ATTR_BANK;
+
+            if (attributes & BG_ATTR_X_FLIP) {
+                x = 7 - (x % 8);
+            }
+
+            if (attributes & BG_ATTR_Y_FLIP) {
+                y = 7 - (y % 8);
+            }
+
+            pixel_index_bg_win = tile_pixel(x % 8, y % 8, tile_id, 1, tile_bank);
+            pixel_color = map_palette_bg(attributes & BG_ATTR_PALETTE, pixel_index_bg_win);
         }
     }
 
@@ -132,13 +193,13 @@ static void draw() {
                     tile_y = (obj_y_size - 1) - tile_y;
                 }
 
-                uint8_t pixel_index = tile_pixel(tile_x, tile_y, obj_tile, 0);
+                uint8_t pixel_index = tile_pixel(tile_x, tile_y, obj_tile, 0, obj_flags & OBJ_BANK);
 
                 uint8_t palette = (obj_flags & OBJ_DMG_PALETTE) ? ppu.obp1 : ppu.obp0;
 
                 // Pixel index 0 == transparent
                 if (pixel_index != 0) {
-                    pixel_color = map_palette(palette, pixel_index);
+                    pixel_color = map_palette_obj(obj_flags & OBJ_CGB_PALLETE, pixel_index);
                 }
             }
         }
@@ -251,10 +312,11 @@ uint8_t ppu_io_read(uint8_t addr) {
         case 0x4A: return ppu.wy; break;
         case 0x4B: return ppu.wx; break;
         case 0x4F: return ppu.vram_bank; break;
-        default:
-            printf("Bad PPU IO read");
-            return 0;
-            break;
+        case 0x68: return ppu.bgpi | PI_UNUSED; break;
+        case 0x69: return ppu.bgpd[ppu.bgpi & PI_ADDRESS]; break;
+        case 0x6A: return ppu.obpi | PI_UNUSED; break;
+        case 0x6B: return ppu.obpd[ppu.obpi & PI_ADDRESS]; break;
+        default: return 0; break;
     }
 }
 
@@ -273,8 +335,19 @@ void ppu_io_write(uint8_t addr, uint8_t data) {
         case 0x4A: ppu.wy = data; break;
         case 0x4B: ppu.wx = data; break;
         case 0x4F: ppu.vram_bank = data & 1; break;
-        default:
-            printf("Bad PPU IO write");
+        case 0x68: ppu.bgpi = data; break;
+        case 0x69:
+            ppu.bgpd[ppu.bgpi & PI_ADDRESS] = data;
+            if (ppu.bgpi & PI_INCREMENT) {
+                ppu.bgpi = PI_INCREMENT | ((ppu.bgpi & PI_ADDRESS) + 1);
+            }
+            break;
+        case 0x6A: ppu.obpi = data; break;
+        case 0x6B:
+            ppu.obpd[ppu.obpi & PI_ADDRESS] = data;
+            if (ppu.obpi & PI_INCREMENT) {
+                ppu.obpi = PI_INCREMENT | ((ppu.obpi & PI_ADDRESS) + 1);
+            }
             break;
     }
 }

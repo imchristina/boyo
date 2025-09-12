@@ -13,6 +13,7 @@
 
 #ifdef CGB
 #include "cgb.h"
+#include "vdma.h"
 #endif
 
 gb_emu_t emu = {};
@@ -32,6 +33,7 @@ int emu_execute() {
 
 #ifdef CGB
     cgb_execute(t);
+    vdma_execute(t);
 #endif
 
     int result = EMU_EVENT_NONE;

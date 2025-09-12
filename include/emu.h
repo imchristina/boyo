@@ -6,7 +6,12 @@
 #define EMU_EVENT_AUDIO 0b10
 #define EMU_EVENT_ANY   0b11
 
+#ifdef CGB
+typedef void (*emu_frame_callback_t)(uint16_t *buffer);
+#else
 typedef void (*emu_frame_callback_t)(uint8_t *buffer);
+#endif
+
 typedef void (*emu_audio_callback_t)(int16_t *buffer, int len);
 
 typedef struct {

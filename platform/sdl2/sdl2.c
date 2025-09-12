@@ -90,12 +90,26 @@ void process_events() {
 }
 
 bool skip_frame = false;
+#ifdef CGB
+void frame_callback(uint16_t *buffer) {
+    DEBUG_PRINTF("NEW FRAME\n");
+
+    // Convert RGB555 color to SDL 32-bit
+    SDL_ConvertPixels(160, 144,
+                      SDL_PIXELFORMAT_BGR555, buffer, 160 * 2,
+                      surface->format->format, surface->pixels, surface->pitch);
+
+    if (!skip_frame) {
+        SDL_UpdateWindowSurface(win);
+    }
+}
+#else
 void frame_callback(uint8_t *buffer) {
     DEBUG_PRINTF("NEW FRAME\n");
 
     static uint32_t sdl_fb[160*144];
 
-    // Convert GB color to SDL 8-bit
+    // Convert GB color to SDL 32-bit
     for (int i = 0; i < 160*144; i++) {
         sdl_fb[i] = sdl_col[buffer[i]];
     }
@@ -106,6 +120,7 @@ void frame_callback(uint8_t *buffer) {
         SDL_UpdateWindowSurface(win);
     }
 }
+#endif
 
 void audio_callback(int16_t *buffer, int len) {
     bool underrun = SDL_GetQueuedAudioSize(audio_dev) < (len * sizeof(int16_t));

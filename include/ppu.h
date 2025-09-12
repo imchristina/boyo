@@ -26,6 +26,10 @@ typedef struct {
 
 #ifdef CGB
     bool vram_bank;
+    uint8_t bgpi; // Background palette index
+    uint8_t bgpd[64]; // Background pallete data
+    uint8_t obpi; // Object palette index
+    uint8_t obpd[64]; // Object palette data
 #endif
 
     uint8_t vram[VRAM_SIZE];
@@ -34,7 +38,11 @@ typedef struct {
     uint8_t mode;
     uint8_t lx; // Virtual lx for decoupling with dot while rendering
     bool stat_int;
+#ifdef CGB
+    uint16_t fb[160*144];
+#else
     uint8_t fb[160*144];
+#endif
 } ppu_t;
 
 extern ppu_t ppu;
