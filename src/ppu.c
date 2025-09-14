@@ -249,10 +249,7 @@ uint8_t ppu_io_read(uint8_t addr) {
         case 0x49: return ppu.obp1; break;
         case 0x4A: return ppu.wy; break;
         case 0x4B: return ppu.wx; break;
-        default:
-            printf("Bad PPU IO read");
-            return 0;
-            break;
+        default: return 0; break;
     }
 }
 
@@ -270,9 +267,6 @@ void ppu_io_write(uint8_t addr, uint8_t data) {
         case 0x49: ppu.obp1 = data; break;
         case 0x4A: ppu.wy = data; break;
         case 0x4B: ppu.wx = data; break;
-        default:
-            printf("Bad PPU IO write");
-            break;
     }
 }
 
