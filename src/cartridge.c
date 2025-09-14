@@ -13,7 +13,7 @@ void cartridge_open_rom(char *path) {
         exit(1);
     }
 
-    fread(cartridge.rom, 1, 8000000, rom);
+    fread(cartridge.rom, 1, ROM_SIZE, rom);
     fclose(rom);
 
     // Decode cartridge header

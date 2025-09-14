@@ -1,8 +1,10 @@
 #ifndef CARTRIDGE_H
 #define CARTRIDGE_H
 
+#define ROM_SIZE 8388608
+
 typedef struct {
-    uint8_t rom[8000000];
+    uint8_t rom[ROM_SIZE];
     uint8_t ram[0x8000];
 
     char title[16];
