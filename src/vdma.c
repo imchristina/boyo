@@ -14,7 +14,7 @@ void vdma_execute(uint8_t t) {
     if (vdma.start) {
         uint16_t length = ((vdma.control & ~CONTROL_MODE) + 1) * 0x10;
         vdma.source &= 0xFFF0;
-        vdma.destination &= 0x0FF0;
+        vdma.destination &= 0x1FF0;
 
         for (int i = 0; i < length; i++) {
             uint16_t vram_address = vdma.destination + i + (ppu.vram_bank * 0x2000);

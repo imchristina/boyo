@@ -44,7 +44,7 @@ uint8_t mem_io_read(uint8_t addr) {
     } else if (addr >= 0x51 && addr <= 0x55) {
         return vdma_io_read(addr);
     } else if (addr == 0x70) {
-        return mem.wram_bank & ~CGB_WRAM_BANK;
+        return ((mem.wram_bank + 1) & CGB_WRAM_BANK) | ~CGB_WRAM_BANK;
 #endif
     } else {
         return 0;
@@ -77,7 +77,9 @@ void mem_io_write(uint8_t addr, uint8_t data) {
     } else if (addr >= 0x51 && addr <= 0x55) {
         vdma_io_write(addr, data);
     } else if (addr == 0x70) {
-        mem.wram_bank = data;
+        uint8_t bank = data & CGB_WRAM_BANK;
+        if (!bank) { bank = 1; }
+        mem.wram_bank = bank - 1;
 #endif
     }
 }
@@ -100,9 +102,7 @@ uint8_t mem_read(uint16_t addr) {
         if (addr <= 0xCFFF) {
             return mem.wram[addr-0xC000];
         } else {
-            uint8_t wram_bank = mem.wram_bank ? mem.wram_bank-1 : 0;
-            wram_bank &= CGB_WRAM_BANK;
-            return mem.wram[(addr-0xC000)+(wram_bank * 0x1000)];
+            return mem.wram[(addr-0xC000)+(mem.wram_bank*0x1000)];
         }
 #else
         return mem.wram[addr-0xC000];
@@ -138,9 +138,7 @@ void mem_write(uint16_t addr, uint8_t data) {
         if (addr <= 0xCFFF) {
             mem.wram[addr-0xC000] = data;
         } else {
-            uint8_t wram_bank = mem.wram_bank ? mem.wram_bank-1 : 0;
-            wram_bank &= CGB_WRAM_BANK;
-            mem.wram[(addr-0xC000)+(wram_bank * 0x1000)] = data;
+            mem.wram[(addr-0xC000)+(mem.wram_bank*0x1000)] = data;
         }
 #else
         mem.wram[addr-0xC000] = data;
