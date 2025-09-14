@@ -3,7 +3,7 @@ PLATFORM ?= sdl2
 
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -Iinclude -std=c23 -g -O3
+CFLAGS = -Wall -Wextra -Iinclude -std=c2x -g -O3
 
 ifdef DEBUG_PRINT
 	CFLAGS += -DDEBUG_PRINT=$(DEBUG_PRINT)
