@@ -99,9 +99,10 @@ uint16_t map_palette_obj(uint8_t palette, uint8_t index) {
 void draw() {
     uint16_t pixel_color = 0;
     uint8_t pixel_index_bg_win = 0;
+    uint8_t priority_bg_win = 0;
 
     // Background
-    if (ppu.lcdc & LCDC_BG_WIN_ENABLE) {
+    if (true) {//(ppu.lcdc & LCDC_BG_WIN_ENABLE) {
         // Get scrolled x/y values
         int x = (ppu.lx + ppu.scx) % 256;
         int y = (ppu.ly + ppu.scy) % 256;
@@ -116,6 +117,7 @@ void draw() {
         // Get BG map attributes
         uint8_t attributes = ppu.vram[tile_address + 0x2000];
         bool tile_bank = attributes & BG_ATTR_BANK;
+        priority_bg_win |= attributes & BG_ATTR_PRIORITY;
 
         if (attributes & BG_ATTR_X_FLIP) {
             x = 7 - (x % 8);
@@ -130,7 +132,7 @@ void draw() {
     }
 
     // Window
-    if ((ppu.lcdc & LCDC_BG_WIN_ENABLE) && (ppu.lcdc & LCDC_WIN_ENABLE)) {
+    if /*((ppu.lcdc & LCDC_BG_WIN_ENABLE)*/(true && (ppu.lcdc & LCDC_WIN_ENABLE)) {
         if (ppu.lx >= (ppu.wx - 7) && ppu.ly >= ppu.wy) {
             // Get window x/y values
             int x = ppu.lx - (ppu.wx - 7);
@@ -146,6 +148,7 @@ void draw() {
             // Get BG map attributes
             uint8_t attributes = ppu.vram[tile_address + 0x2000];
             bool tile_bank = attributes & BG_ATTR_BANK;
+            priority_bg_win |= attributes & BG_ATTR_PRIORITY;
 
             if (attributes & BG_ATTR_X_FLIP) {
                 x = 7 - (x % 8);
@@ -176,12 +179,14 @@ void draw() {
                 obj_tile &= 0b11111110;
             }
 
-            // Object pixel is not drawn if priority is enabled and BG/WIN index is 1-3
-            bool priority_disable = (obj_flags & OBJ_PRIORITY) && (pixel_index_bg_win > 0);
+            bool priority_enable = false;
+            priority_enable |= pixel_index_bg_win == 0;
+            priority_enable |= (ppu.lcdc & LCDC_BG_WIN_ENABLE) == 0;
+            priority_enable |= (!priority_bg_win && !(obj_flags & OBJ_PRIORITY));
 
             bool object_in_pos = y >= obj_y && y < obj_y+obj_y_size && x >= obj_x && x < obj_x+8;
 
-            if (!priority_disable && object_in_pos) {
+            if (priority_enable && object_in_pos) {
                 uint8_t tile_x = x - obj_x;
                 uint8_t tile_y = y - obj_y;
 
