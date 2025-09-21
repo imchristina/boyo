@@ -90,6 +90,22 @@ void process_events() {
 }
 
 bool skip_frame = false;
+
+void limit_framerate(double target_frametime) {
+    perf_count_target += (uint64_t)(target_frametime * perf_count_freq / 1000.0);
+
+    uint64_t perf_count_end = SDL_GetPerformanceCounter();
+
+    if (perf_count_end < perf_count_target) {
+        double ms_to_wait = (perf_count_target - perf_count_end) * 1000.0 / perf_count_freq;
+        SDL_Delay((uint32_t)ms_to_wait);
+    } else {
+        perf_count_target = perf_count_end;
+    }
+
+    perf_count_start = SDL_GetPerformanceCounter();
+}
+
 #ifdef CGB
 void frame_callback(uint16_t *buffer) {
     DEBUG_PRINTF("NEW FRAME\n");
@@ -101,6 +117,9 @@ void frame_callback(uint16_t *buffer) {
 
     if (!skip_frame) {
         SDL_UpdateWindowSurface(win);
+        limit_framerate(target_frametime);
+    } else {
+        skip_frame = false;
     }
 }
 #else
@@ -118,6 +137,9 @@ void frame_callback(uint8_t *buffer) {
 
     if (!skip_frame) {
         SDL_UpdateWindowSurface(win);
+        limit_framerate(target_frametime);
+    } else {
+        skip_frame = false;
     }
 }
 #endif
@@ -137,6 +159,10 @@ void audio_callback(int16_t *buffer, int len) {
 
     if (underrun) {
         skip_frame = true;
+    }
+
+    if (!underrun && !emu.ppu_enabled) {
+        limit_framerate(1000 * (len/2.0)/(double)audiospec_have.freq);
     }
 }
 
@@ -221,21 +247,6 @@ int main(int argc, char *argv[]) {
         if (emu.ppu_enabled) {
             emu_run_to(EMU_EVENT_FRAME);
 
-            // Limit framerate
-            perf_count_target += (uint64_t)(target_frametime * perf_count_freq / 1000.0);
-
-            uint64_t perf_count_end = SDL_GetPerformanceCounter();
-
-            if ((perf_count_end < perf_count_target) && !skip_frame) {
-                double ms_to_wait = (perf_count_target - perf_count_end) * 1000.0 / perf_count_freq;
-                SDL_Delay((uint32_t)ms_to_wait);
-            } else {
-                perf_count_target = perf_count_end;
-            }
-
-            perf_count_start = SDL_GetPerformanceCounter();
-
-            skip_frame = false;
         } else if (emu.apu_enabled) {
             emu_run_to(EMU_EVENT_AUDIO);
         } else {
