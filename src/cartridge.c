@@ -155,7 +155,7 @@ uint8_t cartridge_read(uint16_t addr) {
             if (addr <= 0x3FFF) { // ROM Bank 0
                 return cartridge.rom[addr];
             } else if (addr <= 0x7FFF) { // ROM bank *
-                uint8_t bank = cartridge.rom_bank;
+                uint16_t bank = cartridge.rom_bank;
                 int bank_addr = 0x4000 * (bank - 1);
                 return cartridge.rom[addr+bank_addr];
             } else if (addr >= 0xA000 && addr <= 0xBFFF) { // RAM
@@ -271,7 +271,7 @@ void cartridge_write(uint16_t addr, uint8_t data) {
                 cartridge.rom_bank &= 0b011111111;
                 cartridge.rom_bank |= (data & 1) << 8;
             } else if (addr <= 0x5FFF) { // RAM Bank Number
-                cartridge.ram_bank = data & 0b00000011;
+                cartridge.ram_bank = data & 0b00001111;
             } else if (addr <= 0x7FFF) { // Bank Mode Select
                 cartridge.bank_mode = data & 0b00000001;
             } else if (addr >= 0xA000 && addr <= 0xBFFF) { // RAM
