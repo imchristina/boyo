@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Build CI
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-dmg:
+  build-ubuntu-amd64-dmg-sdl2:
     runs-on: ubuntu-latest
     steps:
     - name: apt update
@@ -18,14 +18,14 @@ jobs:
 
     - uses: actions/checkout@v4
     - name: make
-      run: make
+      run: make CGB=0 sdl2
       
     - name: upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: gbemu-dmg
-        path: gbemu
-  build-cgb:
+        name: boyo-ubuntu-amd64-dmg-sdl2
+        path: build/boyo
+  build-ubuntu-amd64-cgb-sdl2:
     runs-on: ubuntu-latest
     steps:
     - name: apt update
@@ -36,10 +36,10 @@ jobs:
 
     - uses: actions/checkout@v4
     - name: make
-      run: make CGB=1
+      run: make CGB=1 sdl2
 
     - name: upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: gbemu-cgb
-        path: gbemu
+        name: boyo-ubuntu-amd64-cgb-sdl2
+        path: build/boyo

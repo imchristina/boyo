@@ -1,70 +1,32 @@
-# User-selectable platform (default = sdl2)
-PLATFORM ?= sdl2
-
-# Compiler and flags
-CC = gcc
-CFLAGS = -Wall -Wextra -Iinclude -std=c2x -g -O3
-
-ifdef DEBUG_PRINT
-	CFLAGS += -DDEBUG_PRINT=$(DEBUG_PRINT)
-endif
-
-ifeq ($(CGB), 1)
-	CFLAGS += -DCGB
-endif
-
-# Platform-specific flags
-ifeq ($(PLATFORM), null)
-	CFLAGS_PLATFORM = $(CFLAGS)
-	LDFLAGS_PLATFORM = $(LDFLAGS)
-else ifeq ($(PLATFORM), sdl2)
-	CFLAGS_PLATFORM = $(CFLAGS) $(shell pkg-config --cflags sdl2)
-	LDFLAGS_PLATFORM = $(shell pkg-config --libs sdl2)
-else
-$(error Unknown PLATFORM '$(PLATFORM)'. Supported: sdl2)
-endif
-
-# Directories
-SRC_DIR = src
-OBJ_DIR = obj
-BIN = gbemu
-
-# Platform directories
-SRC_DIR_PLATFORM = platform/$(PLATFORM)
-OBJ_DIR_PLATFORM = $(OBJ_DIR)/$(PLATFORM)
+include common.mk
 
 # Source files
 SRCS = $(wildcard $(SRC_DIR)/*.c)
-SRCS_PLATFORM = $(wildcard $(SRC_DIR_PLATFORM)/*.c)
-
-OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
-OBJS_PLATFORM = $(patsubst $(SRC_DIR_PLATFORM)/%.c, $(OBJ_DIR_PLATFORM)/%.o, $(SRCS_PLATFORM))
+OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRCS))
 
 # Default target
-all: $(BIN)
+all: lib $(DEFAULT_FRONTEND)
 
-# Link the executable
-$(BIN): $(OBJS) $(OBJS_PLATFORM)
-	$(CC) -o $@ $^ $(LDFLAGS_PLATFORM)
+lib: $(BUILD_DIR)/$(LIB)
+
+$(FRONTENDS): lib
+	$(MAKE) -C $(FRONTEND_DIR)/$@
+
+# Link the library
+$(BUILD_DIR)/$(LIB): $(OBJS)
+	$(AR) cr $@ $^
 
 # Compile main source files
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Compile platform source files
-$(OBJ_DIR_PLATFORM)/%.o: $(SRC_DIR_PLATFORM)/%.c | $(OBJ_DIR_PLATFORM)
-	$(CC) $(CFLAGS_PLATFORM) -c $< -o $@
-
 # Create output directories
-$(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-$(OBJ_DIR_PLATFORM):
-	mkdir -p $(OBJ_DIR_PLATFORM)
-
-# Clean target
+# Default clean target
 clean:
-	rm -rf $(OBJ_DIR) $(BIN)
+	rm -rf $(BUILD_DIR)
 
 # Phony targets
-.PHONY: all clean
+.PHONY: all lib clean

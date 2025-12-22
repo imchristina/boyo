@@ -1,4 +1,5 @@
-gbemu
 *.gb
+*.gbc
+*.sav
 *.bin
-obj/
+build/
