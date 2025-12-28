@@ -1,12 +1,10 @@
 # Boyo
 
-> A Nintendo Gameboy (DMG) and Gameboy Color (CGB) emulator written in C and SDL2.
-
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Language](https://img.shields.io/badge/language-C-orange.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Cross--Platform-lightgrey.svg)
 
-**Boyo** is a modular, lightweight emulator designed to be platform-agnostic. It is compatible with the majority of the commercial game library and passes a significant number of hardware conformance tests.
+**Boyo** is a modular, lightweight Gameboy and Gameboy Color emulator designed to be platform-agnostic. It is compatible with the majority of the commercial game library and passes a significant number of hardware conformance tests.
 
 ## Features
 
