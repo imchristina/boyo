@@ -1,6 +1,13 @@
 #ifndef EMU_H
 #define EMU_H
 
+#include <stddef.h>
+
+#define EMU_ROM_SIZE_MIN    32768
+#define EMU_ROM_SIZE_MAX    8388608
+#define EMU_SAV_SIZE_MAX    0x20000
+#define EMU_TITLE_SIZE_MAX  16
+
 #define EMU_EVENT_NONE  0b00
 #define EMU_EVENT_FRAME 0b01
 #define EMU_EVENT_AUDIO 0b10
@@ -26,5 +33,10 @@ typedef struct {
 extern gb_emu_t emu;
 
 int emu_run_to(int mask);
+
+void emu_load_rom(uint8_t *data, size_t size);
+void emu_load_sav(uint8_t *data, size_t size);
+size_t emu_get_sav_size();
+size_t emu_get_title(char *title);
 
 #endif

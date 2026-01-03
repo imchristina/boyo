@@ -5,10 +5,8 @@
 
 #include "emu.h"
 #include "mem.h"
-#include "cpu.h"
-#include "joypad.h"
-#include "cartridge.h"
 #include "apu.h"
+#include "joypad.h"
 #include "log.h"
 
 SDL_Window *win;
@@ -108,8 +106,6 @@ void limit_framerate(double target_frametime) {
 
 #ifdef CGB
 void frame_callback(uint16_t *buffer) {
-    DEBUG_PRINTF("NEW FRAME\n");
-
     // Convert RGB555 color to SDL 32-bit
     SDL_ConvertPixels(160, 144,
                       SDL_PIXELFORMAT_BGR555, buffer, 160 * 2,
@@ -124,8 +120,6 @@ void frame_callback(uint16_t *buffer) {
 }
 #else
 void frame_callback(uint8_t *buffer) {
-    DEBUG_PRINTF("NEW FRAME\n");
-
     static uint32_t sdl_fb[160*144];
 
     // Convert GB color to SDL 32-bit
@@ -165,6 +159,36 @@ void audio_callback(int16_t *buffer, int len) {
         limit_framerate(1000 * (len/2.0)/(double)audiospec_have.freq);
     }
 }
+
+bool open_file(const char *path, uint8_t *destination, size_t size) {
+    if (size > 0) {
+        FILE *file = fopen(path, "rb");
+        if (!file) {
+            return false;
+        }
+        fread(destination, 1, size, file);
+        fclose(file);
+    }
+
+    return true;
+}
+
+bool save_file(const char *path, uint8_t *destination, size_t size) {
+    if (size > 0) {
+        FILE *file = fopen(path, "wb");
+        if (!file) {
+            return false;
+        }
+        fwrite(destination, 1, size, file);
+        fclose(file);
+    }
+
+    return true;
+}
+
+uint8_t rom[EMU_ROM_SIZE_MAX];
+uint8_t sav[EMU_SAV_SIZE_MAX];
+char title[EMU_TITLE_SIZE_MAX];
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -225,11 +249,18 @@ int main(int argc, char *argv[]) {
 #else
     mem_open_bootrom("dmg_boot.bin");
 #endif
-    cartridge_open_rom(argv[1]);
-    cartridge_open_ram(save_path);
+
+    if (!open_file(argv[1], rom, EMU_ROM_SIZE_MAX)) {
+        printf("Could not open cartridge rom %s\n", argv[1]);
+    }
+    open_file(save_path, sav, EMU_SAV_SIZE_MAX);
+
+    emu_load_rom(rom, EMU_ROM_SIZE_MAX);
+    emu_load_sav(sav, EMU_SAV_SIZE_MAX);
 
     // Get the game title out of the cartridge header
-    printf("%s %s\n","Cartridge Header Title:", cartridge.title);
+    emu_get_title(title);
+    printf("%s %s\n","Cartridge Header Title:", title);
 
     // Initialize the framerate limiter
     perf_count_freq = SDL_GetPerformanceFrequency();
@@ -256,9 +287,11 @@ int main(int argc, char *argv[]) {
         process_events();
     }
 
-    // Append .sav to rom path and save cartridge ram
+    // Save cartridge ram
     printf("Saving cartridge ram\n");
-    cartridge_save_ram(save_path);
+    if (!save_file(save_path, sav, emu_get_sav_size())) {
+        printf("Could not open cartridge save %s\n", save_path);
+    };
 
     SDL_DestroyWindow(win);
     SDL_CloseAudioDevice(audio_dev);

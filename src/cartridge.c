@@ -1,32 +1,32 @@
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "cartridge.h"
+#include "emu.h"
+
+#define HEADER_TITLE_OFFSET     0x134
+#define HEADER_TITLE_SIZE       0x10
+#define HEADER_TYPE_OFFSET      0x147
+#define HEADER_ROM_SIZE_OFFSET  0x148
+#define HEADER_RAM_SIZE_OFFSET  0x149
 
 gb_cartridge_t cartridge = {};
 
-void cartridge_open_rom(char *path) {
-    FILE *rom = fopen(path, "rb");
-    if (!rom) {
-        printf("Could not open cartridge rom %s\n", path);
+void cartridge_load_rom(uint8_t *data, size_t size) {
+    if (size < EMU_ROM_SIZE_MIN) {
+        printf("CARTRIDGE: Loaded ROM size smaller than minimum!\n");
         exit(1);
     }
 
-    fread(cartridge.rom, 1, ROM_SIZE, rom);
-    fclose(rom);
-
-    // Decode cartridge header
-    for (int i = 0x134; i <= 0x143; i++) {
-        cartridge.title[i-0x134] = cartridge.rom[i];
-    }
-    cartridge.type = cartridge.rom[0x147];
-    cartridge.rom_size = cartridge.rom[0x148];
-    cartridge.ram_size = cartridge.rom[0x149];
+    cartridge.rom = data;
+    cartridge.type = cartridge.rom[HEADER_TYPE_OFFSET];
+    cartridge.rom_size = cartridge.rom[HEADER_ROM_SIZE_OFFSET];
+    cartridge.ram_size = cartridge.rom[HEADER_RAM_SIZE_OFFSET];
 }
 
-int get_sav_size() {
-    int sav_size = 0;
+size_t cartridge_get_ram_size() {
+    size_t size = 0;
     switch (cartridge.type) {
         case 0x03: // MBC1+RAM+BATTERY
         case 0x10: // MBC3+TIMER+RAM+BATTERY
@@ -34,41 +34,36 @@ int get_sav_size() {
         case 0x1B: // MBC5+RAM+BATTERY
         case 0x1E: // MBC5+RUMBLE+RAM+BATTERY
             switch (cartridge.ram_size) {
-                case 0x02: sav_size = 0x2000; break;
-                case 0x03: sav_size = 0x8000; break;
-                case 0x04: sav_size = 0x20000; break;
-                case 0x05: sav_size = 0x10000; break;
+                case 0x02: size = 0x2000; break;
+                case 0x03: size = 0x8000; break;
+                case 0x04: size = 0x20000; break;
+                case 0x05: size = 0x10000; break;
             }
             break;
-        case 0x06: sav_size = 0x200; break; // MBC2+BATTERY
+        case 0x06: size = 0x200; break; // MBC2+BATTERY
     }
 
-    return sav_size;
+    return size;
 }
 
-void cartridge_open_ram(char *path) {
-    int sav_size = get_sav_size();
-    if (sav_size > 0) {
-        FILE *save = fopen(path, "rb");
-        if (save) {
-            fread(cartridge.ram, 1, sav_size, save);
-            fclose(save);
-        }
+void cartridge_load_ram(uint8_t *data, size_t size) {
+    cartridge.ram = data;
+
+    size_t sav_size = cartridge_get_ram_size();
+    if (size < sav_size) {
+        printf("CARTRIDGE: Loaded RAM size smaller than cartridge spec, continuing anyways\n");
     }
 }
 
-void cartridge_save_ram(char *path) {
-    int sav_size = get_sav_size();
-    if (sav_size > 0) {
-        FILE *save = fopen(path, "wb");
-        if (!save) {
-            printf("Could not open cartridge save %s\n", path);
-            exit(1);
-        }
+size_t cartridge_get_title(char *title) {
+    size_t i = 0;
 
-        fwrite(cartridge.ram, 1, sav_size, save);
-        fclose(save);
-    }
+    do {
+        title[i] = cartridge.rom[i+HEADER_TITLE_OFFSET];
+        i++;
+    } while (title[i-1] != 0 && i < EMU_TITLE_SIZE_MAX);
+
+    return i;
 }
 
 uint8_t cartridge_read(uint16_t addr) {

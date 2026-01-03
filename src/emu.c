@@ -66,3 +66,19 @@ int emu_run_to(int mask) {
 
     return result;
 }
+
+void emu_load_rom(uint8_t *data, size_t size) {
+    cartridge_load_rom(data, size);
+}
+
+void emu_load_sav(uint8_t *data, size_t size) {
+    cartridge_load_ram(data, size);
+}
+
+size_t emu_get_sav_size() {
+    return cartridge_get_ram_size();
+}
+
+size_t emu_get_title(char *title) {
+    return cartridge_get_title(title);
+}

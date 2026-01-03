@@ -1,13 +1,12 @@
 #ifndef CARTRIDGE_H
 #define CARTRIDGE_H
 
-#define ROM_SIZE 8388608
+#include <stddef.h>
 
 typedef struct {
-    uint8_t rom[ROM_SIZE];
-    uint8_t ram[0x8000];
+    uint8_t *rom;
+    uint8_t *ram;
 
-    char title[16];
     uint8_t type;
     uint8_t rom_size;
     uint8_t ram_size;
@@ -20,9 +19,10 @@ typedef struct {
 
 extern gb_cartridge_t cartridge;
 
-void cartridge_open_rom(char *path);
-void cartridge_open_ram(char *path);
-void cartridge_save_ram(char *path);
+void cartridge_load_rom(uint8_t *data, size_t size);
+void cartridge_load_ram(uint8_t *data, size_t size);
+size_t cartridge_get_ram_size();
+size_t cartridge_get_title(char *title);
 uint8_t cartridge_read(uint16_t addr);
 void cartridge_write(uint16_t addr, uint8_t data);
 

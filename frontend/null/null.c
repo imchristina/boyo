@@ -1,21 +1,54 @@
 #include <stdint.h>
+#include <stdio.h>
+#include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "emu.h"
 #include "mem.h"
-#include "cpu.h"
-#include "joypad.h"
 #include "cartridge.h"
-#include "apu.h"
-#include "log.h"
 
+#ifdef CGB
+void frame_callback(uint16_t *buffer) {
+#else
 void frame_callback(uint8_t *buffer) {
-    DEBUG_PRINTF("NEW FRAME\n");
+#endif
+    //printf("NEW FRAME\n");
 }
 
 void audio_callback(int16_t *buffer, int len) {
-
+    //printf("NEW AUDIO\n");
 }
+
+bool open_file(const char *path, uint8_t *destination, size_t size) {
+    if (size > 0) {
+        FILE *file = fopen(path, "rb");
+        if (!file) {
+            return false;
+        }
+        fread(destination, 1, size, file);
+        fclose(file);
+    }
+
+    return true;
+}
+
+bool save_file(const char *path, uint8_t *destination, size_t size) {
+    if (size > 0) {
+        FILE *file = fopen(path, "wb");
+        if (!file) {
+            return false;
+        }
+        fwrite(destination, 1, size, file);
+        fclose(file);
+    }
+
+    return true;
+}
+
+uint8_t rom[EMU_ROM_SIZE_MAX];
+uint8_t sav[EMU_SAV_SIZE_MAX];
+char title[EMU_TITLE_SIZE_MAX];
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -38,11 +71,18 @@ int main(int argc, char *argv[]) {
 
     // Open boot/game roms
     mem_open_bootrom("dmg_boot.bin");
-    cartridge_open_rom(argv[1]);
-    cartridge_open_ram(save_path);
+
+    if (!open_file(argv[1], rom, EMU_ROM_SIZE_MAX)) {
+         printf("Could not open cartridge rom %s\n", argv[1]);
+    }
+    open_file(save_path, sav, EMU_SAV_SIZE_MAX);
+
+    emu_load_rom(rom, EMU_ROM_SIZE_MAX);
+    emu_load_sav(sav, EMU_SAV_SIZE_MAX);
 
     // Get the game title out of the cartridge header
-    printf("%s %s\n","Cartridge Header Title:", cartridge.title);
+    emu_get_title(title);
+    printf("%s %s\n","Cartridge Header Title:", title);
 
     // Attach callbacks
     emu.frame_callback = frame_callback;
@@ -61,9 +101,11 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Append .sav to rom path and save cartridge ram
+    // Save cartridge ram
     printf("Saving cartridge ram\n");
-    cartridge_save_ram(save_path);
+    if (!save_file(save_path, sav, emu_get_sav_size())) {
+        printf("Could not open cartridge save %s\n", save_path);
+    };
 
     return 0;
 }
