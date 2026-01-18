@@ -44,7 +44,7 @@ int emu_execute() {
     }
 
     if (new_audio) {
-        if (emu.audio_callback != 0) { emu.audio_callback(apu.buffer, APU_BUFFER_SIZE*2); }
+        if (emu.audio_callback != 0) { emu.audio_callback(apu.buffer, EMU_AUDIO_BUFFER_SIZE*2); }
         result |= EMU_EVENT_AUDIO;
     }
 
@@ -85,4 +85,12 @@ size_t emu_get_sav_size() {
 
 size_t emu_get_title(char *title) {
     return cartridge_get_title(title);
+}
+
+void emu_joypad_down(uint8_t mask) {
+    joypad_down(mask);
+}
+
+void emu_joypad_up(uint8_t mask) {
+    joypad_up(mask);
 }

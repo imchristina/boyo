@@ -1,8 +1,7 @@
 #ifndef APU_H
 #define APU_H
 
-#define APU_BUFFER_SIZE 256
-#define APU_SAMPLE_RATE 44100
+#include "emu.h"
 
 typedef struct {
     uint8_t sweep;
@@ -63,7 +62,7 @@ typedef struct {
     uint8_t panning;
     uint8_t control;
 
-    int16_t buffer[APU_BUFFER_SIZE*2];
+    int16_t buffer[EMU_AUDIO_BUFFER_SIZE*2];
     int buffer_index;
     float buffer_index_timer;
 

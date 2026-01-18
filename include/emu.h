@@ -3,17 +3,7 @@
 
 #include <stddef.h>
 
-#define EMU_ROM_SIZE_MIN    32768
-#define EMU_ROM_SIZE_MAX    8388608
-#define EMU_SAV_SIZE_MAX    0x20000
-#define EMU_TITLE_SIZE_MAX  16
-
-#ifdef CGB
-#define EMU_BOOTROM_SIZE_MAX 2048
-#else
-#define EMU_BOOTROM_SIZE_MAX 256
-#endif
-
+// Core
 #define EMU_EVENT_NONE  0b00
 #define EMU_EVENT_FRAME 0b01
 #define EMU_EVENT_AUDIO 0b10
@@ -40,10 +30,39 @@ extern gb_emu_t emu;
 
 int emu_run_to(int mask);
 
+// BOOTROM/ROM/SAV
 void emu_load_bootrom(uint8_t *data, size_t size);
 void emu_load_rom(uint8_t *data, size_t size);
 void emu_load_sav(uint8_t *data, size_t size);
 size_t emu_get_sav_size();
 size_t emu_get_title(char *title);
+
+#define EMU_ROM_SIZE_MIN    32768
+#define EMU_ROM_SIZE_MAX    8388608
+#define EMU_SAV_SIZE_MAX    0x20000
+#define EMU_TITLE_SIZE_MAX  16
+
+#ifdef CGB
+#define EMU_BOOTROM_SIZE_MAX 2048
+#else
+#define EMU_BOOTROM_SIZE_MAX 256
+#endif
+
+// Joypad
+void emu_joypad_down(uint8_t mask);
+void emu_joypad_up(uint8_t mask);
+
+#define EMU_JOYPAD_BUTTON_A             0b11011110
+#define EMU_JOYPAD_BUTTON_B             0b11011101
+#define EMU_JOYPAD_BUTTON_SELECT        0b11011011
+#define EMU_JOYPAD_BUTTON_START         0b11010111
+#define EMU_JOYPAD_DPAD_RIGHT           0b11101110
+#define EMU_JOYPAD_DPAD_LEFT            0b11101101
+#define EMU_JOYPAD_DPAD_UP              0b11101011
+#define EMU_JOYPAD_DPAD_DOWN            0b11100111
+
+// Audio
+#define EMU_AUDIO_BUFFER_SIZE 256
+#define EMU_AUDIO_SAMPLE_RATE 44100
 
 #endif

@@ -5,6 +5,7 @@
 #include "apu.h"
 #include "timer.h"
 #include "log.h"
+#include "emu.h"
 
 #ifdef CGB
 #include "cgb.h"
@@ -376,7 +377,7 @@ bool apu_execute(uint8_t t) {
             noise_execute(&apu.ch4);
 
             // Mix
-            float timer_target = (float)1048576 / (float)APU_SAMPLE_RATE; // (M cycles)/(audio samples) per second
+            float timer_target = (float)1048576 / (float)EMU_AUDIO_SAMPLE_RATE; // (M cycles)/(audio samples) per second
             timer_target *= 0.963; // WHAT IS THIS MAGIC NUMBER???
             if (apu.buffer_index_timer >= timer_target) {
                 // Get samples and convert to output format
@@ -409,7 +410,7 @@ bool apu_execute(uint8_t t) {
 
                 apu.buffer_index_timer -= timer_target;
                 apu.buffer_index += 2;
-                if (apu.buffer_index >= APU_BUFFER_SIZE*2) {
+                if (apu.buffer_index >= EMU_AUDIO_BUFFER_SIZE*2) {
                     apu.buffer_index = 0;
                     new_buffer = true;
                 }

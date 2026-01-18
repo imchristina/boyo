@@ -4,10 +4,6 @@
 #include <SDL2/SDL.h>
 
 #include "emu.h"
-#include "mem.h"
-#include "apu.h"
-#include "joypad.h"
-#include "log.h"
 
 SDL_Window *win;
 SDL_Surface *surface;
@@ -34,53 +30,53 @@ void process_events() {
             case SDL_QUIT: emu.running = 0; break;
             case SDL_KEYDOWN:
                 switch (e.key.keysym.sym) {
-                    case SDLK_l: joypad_down(JOYPAD_BUTTON_A); break;
-                    case SDLK_k: joypad_down(JOYPAD_BUTTON_B); break;
-                    case SDLK_h: joypad_down(JOYPAD_BUTTON_START); break;
-                    case SDLK_g: joypad_down(JOYPAD_BUTTON_SELECT); break;
-                    case SDLK_w: joypad_down(JOYPAD_DPAD_UP); break;
-                    case SDLK_s: joypad_down(JOYPAD_DPAD_DOWN); break;
-                    case SDLK_a: joypad_down(JOYPAD_DPAD_LEFT); break;
-                    case SDLK_d: joypad_down(JOYPAD_DPAD_RIGHT); break;
+                    case SDLK_l: emu_joypad_down(EMU_JOYPAD_BUTTON_A); break;
+                    case SDLK_k: emu_joypad_down(EMU_JOYPAD_BUTTON_B); break;
+                    case SDLK_h: emu_joypad_down(EMU_JOYPAD_BUTTON_START); break;
+                    case SDLK_g: emu_joypad_down(EMU_JOYPAD_BUTTON_SELECT); break;
+                    case SDLK_w: emu_joypad_down(EMU_JOYPAD_DPAD_UP); break;
+                    case SDLK_s: emu_joypad_down(EMU_JOYPAD_DPAD_DOWN); break;
+                    case SDLK_a: emu_joypad_down(EMU_JOYPAD_DPAD_LEFT); break;
+                    case SDLK_d: emu_joypad_down(EMU_JOYPAD_DPAD_RIGHT); break;
                     default: break;
                 }
                 break;
             case SDL_KEYUP:
                 switch (e.key.keysym.sym) {
-                    case SDLK_l: joypad_up(JOYPAD_BUTTON_A); break;
-                    case SDLK_k: joypad_up(JOYPAD_BUTTON_B); break;
-                    case SDLK_h: joypad_up(JOYPAD_BUTTON_START); break;
-                    case SDLK_g: joypad_up(JOYPAD_BUTTON_SELECT); break;
-                    case SDLK_w: joypad_up(JOYPAD_DPAD_UP); break;
-                    case SDLK_s: joypad_up(JOYPAD_DPAD_DOWN); break;
-                    case SDLK_a: joypad_up(JOYPAD_DPAD_LEFT); break;
-                    case SDLK_d: joypad_up(JOYPAD_DPAD_RIGHT); break;
+                    case SDLK_l: emu_joypad_up(EMU_JOYPAD_BUTTON_A); break;
+                    case SDLK_k: emu_joypad_up(EMU_JOYPAD_BUTTON_B); break;
+                    case SDLK_h: emu_joypad_up(EMU_JOYPAD_BUTTON_START); break;
+                    case SDLK_g: emu_joypad_up(EMU_JOYPAD_BUTTON_SELECT); break;
+                    case SDLK_w: emu_joypad_up(EMU_JOYPAD_DPAD_UP); break;
+                    case SDLK_s: emu_joypad_up(EMU_JOYPAD_DPAD_DOWN); break;
+                    case SDLK_a: emu_joypad_up(EMU_JOYPAD_DPAD_LEFT); break;
+                    case SDLK_d: emu_joypad_up(EMU_JOYPAD_DPAD_RIGHT); break;
                     case SDLK_ESCAPE: emu.running = 0;
                     default: break;
                 }
                 break;
             case SDL_CONTROLLERBUTTONDOWN:
                 switch (e.cbutton.button) {
-                    case SDL_CONTROLLER_BUTTON_A: joypad_down(JOYPAD_BUTTON_A); break;
-                    case SDL_CONTROLLER_BUTTON_B: joypad_down(JOYPAD_BUTTON_B); break;
-                    case SDL_CONTROLLER_BUTTON_START: joypad_down(JOYPAD_BUTTON_START); break;
-                    case SDL_CONTROLLER_BUTTON_BACK: joypad_down(JOYPAD_BUTTON_SELECT); break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_UP: joypad_down(JOYPAD_DPAD_UP); break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN: joypad_down(JOYPAD_DPAD_DOWN); break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_LEFT: joypad_down(JOYPAD_DPAD_LEFT); break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: joypad_down(JOYPAD_DPAD_RIGHT); break;
+                    case SDL_CONTROLLER_BUTTON_A: emu_joypad_down(EMU_JOYPAD_BUTTON_A); break;
+                    case SDL_CONTROLLER_BUTTON_B: emu_joypad_down(EMU_JOYPAD_BUTTON_B); break;
+                    case SDL_CONTROLLER_BUTTON_START: emu_joypad_down(EMU_JOYPAD_BUTTON_START); break;
+                    case SDL_CONTROLLER_BUTTON_BACK: emu_joypad_down(EMU_JOYPAD_BUTTON_SELECT); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_UP: emu_joypad_down(EMU_JOYPAD_DPAD_UP); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN: emu_joypad_down(EMU_JOYPAD_DPAD_DOWN); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_LEFT: emu_joypad_down(EMU_JOYPAD_DPAD_LEFT); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: emu_joypad_down(EMU_JOYPAD_DPAD_RIGHT); break;
                 }
                 break;
             case SDL_CONTROLLERBUTTONUP:
                 switch (e.cbutton.button) {
-                    case SDL_CONTROLLER_BUTTON_A: joypad_up(JOYPAD_BUTTON_A); break;
-                    case SDL_CONTROLLER_BUTTON_B: joypad_up(JOYPAD_BUTTON_B); break;
-                    case SDL_CONTROLLER_BUTTON_START: joypad_up(JOYPAD_BUTTON_START); break;
-                    case SDL_CONTROLLER_BUTTON_BACK: joypad_up(JOYPAD_BUTTON_SELECT); break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_UP: joypad_up(JOYPAD_DPAD_UP); break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN: joypad_up(JOYPAD_DPAD_DOWN); break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_LEFT: joypad_up(JOYPAD_DPAD_LEFT); break;
-                    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: joypad_up(JOYPAD_DPAD_RIGHT); break;
+                    case SDL_CONTROLLER_BUTTON_A: emu_joypad_up(EMU_JOYPAD_BUTTON_A); break;
+                    case SDL_CONTROLLER_BUTTON_B: emu_joypad_up(EMU_JOYPAD_BUTTON_B); break;
+                    case SDL_CONTROLLER_BUTTON_START: emu_joypad_up(EMU_JOYPAD_BUTTON_START); break;
+                    case SDL_CONTROLLER_BUTTON_BACK: emu_joypad_up(EMU_JOYPAD_BUTTON_SELECT); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_UP: emu_joypad_up(EMU_JOYPAD_DPAD_UP); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_DOWN: emu_joypad_up(EMU_JOYPAD_DPAD_DOWN); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_LEFT: emu_joypad_up(EMU_JOYPAD_DPAD_LEFT); break;
+                    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: emu_joypad_up(EMU_JOYPAD_DPAD_RIGHT); break;
                 }
             default: break;
         }
@@ -142,8 +138,8 @@ void audio_callback(int16_t *buffer, int len) {
     bool underrun = SDL_GetQueuedAudioSize(audio_dev) < (len * sizeof(int16_t));
     bool overrun = SDL_GetQueuedAudioSize(audio_dev) > (len * sizeof(int16_t) * 8);
 
-    if (underrun) { DEBUG_PRINTF("AUDIO UNDERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
-    if (overrun) { DEBUG_PRINTF("AUDIO OVERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
+    //if (underrun) { printf("AUDIO UNDERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
+    //if (overrun) { printf("AUDIO OVERRUN %d\n", SDL_GetQueuedAudioSize(audio_dev)); }
 
     if (!overrun) {
         if (SDL_QueueAudio(audio_dev, buffer, len * sizeof(int16_t)) < 0) {
@@ -203,10 +199,10 @@ int main(int argc, char *argv[]) {
     surface = SDL_GetWindowSurface(win);
 
     // Initialize SDL audio
-    audiospec_want.freq = APU_SAMPLE_RATE;
+    audiospec_want.freq = EMU_AUDIO_SAMPLE_RATE;
     audiospec_want.format = AUDIO_S16SYS;
     audiospec_want.channels = 2;
-    audiospec_want.samples = APU_BUFFER_SIZE;
+    audiospec_want.samples = EMU_AUDIO_BUFFER_SIZE;
     audiospec_want.callback = NULL;
     audio_dev = SDL_OpenAudioDevice(NULL, 0, &audiospec_want, &audiospec_have, 0);
     if (!audio_dev) {

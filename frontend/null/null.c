@@ -5,8 +5,6 @@
 #include <string.h>
 
 #include "emu.h"
-#include "mem.h"
-#include "cartridge.h"
 
 #ifdef CGB
 void frame_callback(uint16_t *buffer) {

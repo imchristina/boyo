@@ -4,6 +4,9 @@
 #include "joypad.h"
 #include "mem.h"
 
+#define JOYPAD_SELECT_DPAD          0b00010000
+#define JOYPAD_SELECT_BUTTONS       0b00100000
+
 gb_joypad_t joypad = {
     .buttons = 0x0F,
     .dpad = 0x0F,
