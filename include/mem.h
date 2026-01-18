@@ -12,15 +12,13 @@
 #define INT_JOYPAD  0b00010000
 
 #ifdef CGB
-    #define BOOTROM_SIZE 2048
     #define WRAM_SIZE 0x8000
 #else
-    #define BOOTROM_SIZE 256
     #define WRAM_SIZE 0x2000
 #endif
 
 typedef struct {
-    uint8_t bootrom[BOOTROM_SIZE];
+    uint8_t *bootrom;
     uint8_t wram[WRAM_SIZE];
     uint8_t oam[0xA0];
     uint8_t iflag;
@@ -43,8 +41,7 @@ uint8_t mem_read(uint16_t addr);
 void mem_write(uint16_t addr, uint8_t data);
 uint16_t mem_read16(uint16_t addr);
 void mem_write16(uint16_t addr, uint16_t data);
-void mem_open_bootrom(char *path);
-void mem_open_rom(char *path);
+void mem_load_bootrom(uint8_t *data, size_t size);
 void mem_write_next(uint16_t addr, uint8_t data);
 void mem_write_next16(uint16_t addr, uint16_t data);
 void mem_writeback();

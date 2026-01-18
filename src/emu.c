@@ -67,6 +67,10 @@ int emu_run_to(int mask) {
     return result;
 }
 
+void emu_load_bootrom(uint8_t *data, size_t size) {
+    mem_load_bootrom(data, size);
+}
+
 void emu_load_rom(uint8_t *data, size_t size) {
     cartridge_load_rom(data, size);
 }

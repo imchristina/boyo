@@ -8,6 +8,12 @@
 #define EMU_SAV_SIZE_MAX    0x20000
 #define EMU_TITLE_SIZE_MAX  16
 
+#ifdef CGB
+#define EMU_BOOTROM_SIZE_MAX 2048
+#else
+#define EMU_BOOTROM_SIZE_MAX 256
+#endif
+
 #define EMU_EVENT_NONE  0b00
 #define EMU_EVENT_FRAME 0b01
 #define EMU_EVENT_AUDIO 0b10
@@ -34,6 +40,7 @@ extern gb_emu_t emu;
 
 int emu_run_to(int mask);
 
+void emu_load_bootrom(uint8_t *data, size_t size);
 void emu_load_rom(uint8_t *data, size_t size);
 void emu_load_sav(uint8_t *data, size_t size);
 size_t emu_get_sav_size();

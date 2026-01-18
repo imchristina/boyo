@@ -186,6 +186,7 @@ bool save_file(const char *path, uint8_t *destination, size_t size) {
     return true;
 }
 
+uint8_t bootrom[EMU_BOOTROM_SIZE_MAX];
 uint8_t rom[EMU_ROM_SIZE_MAX];
 uint8_t sav[EMU_SAV_SIZE_MAX];
 char title[EMU_TITLE_SIZE_MAX];
@@ -245,16 +246,25 @@ int main(int argc, char *argv[]) {
 
     // Open boot/game roms
 #ifdef CGB
-    mem_open_bootrom("cgb_boot.bin");
+    char *bootrom_path = "cgb_boot.bin";
 #else
-    mem_open_bootrom("dmg_boot.bin");
+    char *bootrom_path = "dmg_boot.bin";
 #endif
 
+    // Open BOOTROM
+    if (!open_file(bootrom_path, bootrom, EMU_BOOTROM_SIZE_MAX)) {
+        printf("Could not open boot rom %s\n", argv[1]);
+    }
+
+    // Open ROM
     if (!open_file(argv[1], rom, EMU_ROM_SIZE_MAX)) {
         printf("Could not open cartridge rom %s\n", argv[1]);
     }
+
+    // Open SAV (if it exists)
     open_file(save_path, sav, EMU_SAV_SIZE_MAX);
 
+    emu_load_bootrom(bootrom, EMU_BOOTROM_SIZE_MAX);
     emu_load_rom(rom, EMU_ROM_SIZE_MAX);
     emu_load_sav(sav, EMU_SAV_SIZE_MAX);
 

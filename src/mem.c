@@ -10,6 +10,7 @@
 #include "cartridge.h"
 #include "apu.h"
 #include "log.h"
+#include "emu.h"
 
 #define MEM_WRITE_NEXT_LEN 4
 
@@ -170,15 +171,13 @@ void mem_write16(uint16_t addr, uint16_t data) {
     mem_write(addr + 1, (data & 0xFF00) >> 8);
 }
 
-void mem_open_bootrom(char *path) {
-    FILE *rom = fopen(path, "rb");
-    if (!rom) {
-        printf("Could not open %s\n", path);
+void mem_load_bootrom(uint8_t *data, size_t size) {
+    if (size > EMU_BOOTROM_SIZE_MAX) {
+        printf("MEM: BOOTROM too big!\n");
         exit(1);
     }
 
-    fread(mem.bootrom, 1, BOOTROM_SIZE, rom);
-    fclose(rom);
+    mem.bootrom = data;
 }
 
 // Memory write log, to be commited at t = 0
