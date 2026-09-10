@@ -1,3 +1,4 @@
+#include <SDL2/SDL_render.h>
 #include <stdint.h>
 #include <string.h>
 #include <signal.h>
@@ -6,12 +7,13 @@
 #include "emu.h"
 
 SDL_Window *win;
-SDL_Surface *surface;
+SDL_Renderer *renderer;
+SDL_Texture *texture;
 SDL_AudioSpec audiospec_want;
 SDL_AudioSpec audiospec_have;
 SDL_AudioDeviceID audio_dev;
 
-uint32_t sdl_col[4];
+uint16_t sdl_col[4];
 
 uint64_t perf_count_freq = 0;
 uint64_t perf_count_start = 0;
@@ -102,13 +104,12 @@ void limit_framerate(double target_frametime) {
 
 #ifdef CGB
 void frame_callback(uint16_t *buffer) {
-    // Convert RGB555 color to SDL 32-bit
-    SDL_ConvertPixels(160, 144,
-                      SDL_PIXELFORMAT_BGR555, buffer, 160 * 2,
-                      surface->format->format, surface->pixels, surface->pitch);
-
     if (!skip_frame) {
-        SDL_UpdateWindowSurface(win);
+        SDL_UpdateTexture(texture, NULL, buffer, 160 * sizeof(uint16_t));
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, texture, NULL, NULL);
+        SDL_RenderPresent(renderer);
+
         limit_framerate(target_frametime);
     } else {
         skip_frame = false;
@@ -116,17 +117,18 @@ void frame_callback(uint16_t *buffer) {
 }
 #else
 void frame_callback(uint8_t *buffer) {
-    static uint32_t sdl_fb[160*144];
-
-    // Convert GB color to SDL 32-bit
-    for (int i = 0; i < 160*144; i++) {
-        sdl_fb[i] = sdl_col[buffer[i]];
-    }
-
-    memcpy(surface->pixels, sdl_fb, 160*144*4);
-
     if (!skip_frame) {
-        SDL_UpdateWindowSurface(win);
+        // Convert GB color
+        static uint16_t sdl_fb[160*144];
+        for (int i = 0; i < 160*144; i++) {
+            sdl_fb[i] = sdl_col[buffer[i]];
+        }
+
+        SDL_UpdateTexture(texture, NULL, sdl_fb, 160 * sizeof(uint16_t));
+        SDL_RenderClear(renderer);
+        SDL_RenderCopy(renderer, texture, NULL, NULL);
+        SDL_RenderPresent(renderer);
+
         limit_framerate(target_frametime);
     } else {
         skip_frame = false;
@@ -195,8 +197,10 @@ int main(int argc, char *argv[]) {
 
     // Initialize SDL/Window/Surface
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER);
-    win = SDL_CreateWindow("Boyo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160, 144, 0);
-    surface = SDL_GetWindowSurface(win);
+    win = SDL_CreateWindow("Boyo", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160*2, 144*2, SDL_WINDOW_RESIZABLE);
+    renderer = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_RenderSetLogicalSize(renderer, 160, 144);
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR555, SDL_TEXTUREACCESS_STREAMING, 160, 144);
 
     // Initialize SDL audio
     audiospec_want.freq = EMU_AUDIO_SAMPLE_RATE;
@@ -222,10 +226,10 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, emu_halt);
 
     // Initialize the SDL color palette
-    sdl_col[0] = SDL_MapRGB(surface->format, 255, 255, 255);
-    sdl_col[1] = SDL_MapRGB(surface->format, 170, 170, 170);
-    sdl_col[2] = SDL_MapRGB(surface->format, 85, 85, 85);
-    sdl_col[3] = SDL_MapRGB(surface->format, 0, 0, 0);
+    sdl_col[0] = 0x7FFF;
+    sdl_col[1] = 0x56B5;
+    sdl_col[2] = 0x294A;
+    sdl_col[3] = 0x0000;
 
     // Get save path
     char save_path[256];
