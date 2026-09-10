@@ -1,5 +1,5 @@
 # User-selectable frontend (default = sdl2)
-FRONTENDS = null sdl2
+FRONTENDS = null sdl2 libretro
 DEFAULT_FRONTEND = sdl2
 
 # Directories
